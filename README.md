@@ -6,71 +6,112 @@ App per tenere traccia dei film e serie TV che hai visto e ricevere consigli per
 
 ---
 
-## Setup rapido
-
-### 1. Ottieni una API key gratuita da TMDB
+## Prerequisito: API Key TMDB (gratuita)
 
 1. Vai su [https://www.themoviedb.org/signup](https://www.themoviedb.org/signup) e crea un account
 2. Vai su [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
-3. Richiedi una API key (tipo "Developer", è gratuita e immediata)
-4. Copia la **API Key (v3 auth)**
-
-### 2. Avvia il backend
-
-```bash
-cd backend
-
-# Crea un virtual environment (consigliato)
-python -m venv venv
-source venv/bin/activate   # Linux/Mac
-# oppure: venv\Scripts\activate  # Windows
-
-# Installa dipendenze
-pip install -r requirements.txt
-
-# Imposta la API key
-export TMDB_API_KEY="la_tua_api_key_qui"   # Linux/Mac
-# oppure: set TMDB_API_KEY=la_tua_api_key_qui  # Windows
-
-# Avvia il server
-python main.py
-```
-
-Il backend sarà disponibile su `http://localhost:8000`.
-La documentazione API interattiva è su `http://localhost:8000/docs`.
-
-### 3. Avvia il frontend
-
-```bash
-cd frontend
-
-# Installa dipendenze
-npm install
-
-# Avvia il dev server
-npm run dev
-```
-
-Il frontend sarà disponibile su `http://localhost:3000`.
-Il proxy Vite inoltra automaticamente le chiamate `/api/*` al backend.
+3. Richiedi una API key (tipo "Developer", gratuita e immediata)
+4. Copia la **API Key (v3 auth)** — ti servirà tra poco
 
 ---
 
-## Funzionalità
+## Deploy su Coolify
 
-- **Scopri** — titoli trending della settimana da TMDB
-- **Cerca** — ricerca libera nel catalogo TMDB (film + serie TV)
-- **I miei visti** — la tua lista personale, filtrabile e ordinabile, con voto personale 1-10
-- **Per te** — consigli personalizzati generati analizzando i tuoi gusti
+### Opzione A — Da repository Git (consigliata)
 
-### Come funziona il motore di raccomandazione
+1. Pusha questo progetto su un repo GitHub/GitLab/Gitea
+2. In Coolify, vai nel tuo progetto → **Add New Resource** → **Private Repository (GitHub App)** o **Public Repository**
+3. Seleziona il repo e il branch
+4. Come build pack scegli **Docker Compose**
+5. Coolify legge il `docker-compose.yml` dalla root del repo
+6. Vai nella tab **Environment Variables** e aggiungi:
+   ```
+   TMDB_API_KEY=la_tua_api_key
+   ```
+7. Clicca **Deploy**
 
-Per ogni titolo nella tua lista, il backend chiede a TMDB i film/serie simili e raccomandati, poi li ordina con uno score basato su:
+Coolify builda entrambi i servizi (frontend + backend), crea il volume per SQLite e assegna automaticamente un dominio tramite Traefik.
 
-- **Frequenza:** quanti dei tuoi titoli raccomandano lo stesso risultato
-- **Generi:** sovrapposizione con i generi che guardi di più
-- **Voto TMDB:** qualità media secondo gli utenti TMDB
-- **Tuo voto personale:** i titoli che hai votato alto pesano di più
+### Opzione B — Docker Compose diretto (senza Git)
+
+1. In Coolify, vai nel tuo progetto → **Add New Resource** → **Docker Compose Empty**
+2. Incolla il contenuto di `docker-compose.yml` nell'editor
+3. **Nota:** con questo metodo devi usare immagini pre-buildate. Builda localmente e pusha su un registry:
+   ```bash
+   # Da locale, builda e tagga
+   docker build -t tuoregistry/watchnext-backend:latest ./backend
+   docker build -t tuoregistry/watchnext-frontend:latest ./frontend
+   docker push tuoregistry/watchnext-backend:latest
+   docker push tuoregistry/watchnext-frontend:latest
+   ```
+   Poi nel compose sostituisci `build:` con `image:`:
+   ```yaml
+   frontend:
+     image: tuoregistry/watchnext-frontend:latest
+   backend:
+     image: tuoregistry/watchnext-backend:latest
+   ```
+
+### Dopo il deploy
+
+- Coolify genera automaticamente un URL per il servizio `frontend` (tipo `watchnext-xxx.tuodominio.local`)
+- Puoi assegnare un dominio custom dalla tab **Domains** in Coolify
+- Il database SQLite è persistente nel volume `watchnext-data`
+
+---
+
+## Architettura Docker
+
+```
+                    ┌─────────────────────────────────┐
+                    │            Traefik               │
+                    │        (gestito da Coolify)       │
+                    └──────────────┬──────────────────┘
+                                   │ :80/:443
+                    ┌──────────────▼──────────────────┐
+                    │     frontend (Nginx + React)     │
+                    │                                  │
+                    │   /           → file statici     │
+                    │   /api/*      → proxy_pass ──────┼───┐
+                    └──────────────────────────────────┘   │
+                                                           │
+                    ┌──────────────────────────────────┐   │
+                    │     backend (FastAPI/Uvicorn)     │◄──┘
+                    │         :8000 (interno)           │
+                    │                                  │
+                    │   SQLite → /data/watchnext.db    │
+                    │              ▲                    │
+                    └──────────────┼───────────────────┘
+                                   │
+                         volume: watchnext-data
+```
+
+- **Traefik** (di Coolify) gestisce SSL e routing verso il frontend
+- **Nginx** serve i file React e fa proxy di `/api/*` verso il backend
+- **FastAPI** gestisce API e recommendation engine
+- **SQLite** è salvato su un volume Docker persistente
+
+---
+
+## Dev locale (senza Docker)
+
+### Backend
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+export TMDB_API_KEY="tua_key"
+python main.py
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Il proxy Vite inoltra automaticamente `/api/*` al backend su `:8000`.
 
 ---
 
@@ -78,51 +119,52 @@ Per ogni titolo nella tua lista, il backend chiede a TMDB i film/serie simili e 
 
 ```
 movie-recommender/
+├── docker-compose.yml         # Compose per Coolify
+├── .env.example
 ├── backend/
-│   ├── main.py              # FastAPI app (API + recommendation engine)
-│   ├── requirements.txt
-│   └── watchnext.db          # SQLite (creato automaticamente)
+│   ├── Dockerfile
+│   ├── main.py                # FastAPI + recommendation engine
+│   └── requirements.txt
 ├── frontend/
-│   ├── src/
-│   │   ├── App.jsx           # Layout + routing + state globale
-│   │   ├── api.js            # Chiamate API
-│   │   ├── pages/
-│   │   │   ├── DiscoverPage  # Trending + ricerca
-│   │   │   ├── WatchedPage   # Lista visti
-│   │   │   └── RecommendationsPage
-│   │   └── components/
-│   │       ├── MediaCard     # Card film/serie
-│   │       ├── DetailModal   # Modale dettaglio
-│   │       ├── StarRating    # Voto personale
-│   │       └── Toast         # Notifiche
+│   ├── Dockerfile             # Multi-stage: Node build → Nginx
+│   ├── nginx.conf             # Proxy /api → backend
 │   ├── vite.config.js
-│   └── package.json
+│   ├── package.json
+│   └── src/
+│       ├── App.jsx
+│       ├── api.js
+│       ├── index.css
+│       ├── pages/
+│       │   ├── DiscoverPage.jsx
+│       │   ├── WatchedPage.jsx
+│       │   └── RecommendationsPage.jsx
+│       └── components/
+│           ├── MediaCard.jsx
+│           ├── DetailModal.jsx
+│           ├── StarRating.jsx
+│           └── Toast.jsx
 └── README.md
 ```
 
 ---
 
-## API Endpoints
+## Funzionalità
 
-| Metodo | Endpoint | Descrizione |
-|--------|----------|-------------|
-| GET | `/api/search?q=...&media_type=...` | Cerca film/serie |
-| GET | `/api/trending?media_type=...` | Trending settimanale |
-| GET | `/api/details/{type}/{id}` | Dettagli completi |
-| GET | `/api/genres/{type}` | Lista generi |
-| GET | `/api/discover/{type}` | Scopri per genere |
-| GET | `/api/watched` | Lista visti |
-| POST | `/api/watched` | Aggiungi ai visti |
-| PATCH | `/api/watched/{id}/{type}` | Aggiorna voto |
-| DELETE | `/api/watched/{id}/{type}` | Rimuovi dai visti |
-| GET | `/api/recommendations?limit=20` | Consigli personalizzati |
+- **Scopri** — titoli trending della settimana da TMDB
+- **Cerca** — ricerca nel catalogo TMDB (film + serie TV)
+- **I miei visti** — lista personale con filtri, ordinamento e voto 1-10
+- **Per te** — consigli personalizzati con motivazione ("perché hai visto X")
+
+### Motore di raccomandazione
+
+Per ogni titolo visto, il backend chiede a TMDB i film/serie simili e li ordina con uno score basato su frequenza (quanti dei tuoi titoli lo suggeriscono), generi preferiti, voto TMDB e voto personale.
 
 ---
 
 ## Prossimi passi possibili
 
 - Autenticazione utente (multi-utente)
-- Watchlist "da vedere" separata dalla lista "visti"
-- Filtri avanzati per genere/anno/voto nella ricerca
-- Import da altre piattaforme (Letterboxd, Trakt)
-- Deploy su Render/Railway (backend) + Vercel/Netlify (frontend)
+- Watchlist "da vedere" separata
+- Filtri avanzati per genere/anno
+- Import da Letterboxd / Trakt
+- Passaggio da SQLite a PostgreSQL per multi-utente

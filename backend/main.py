@@ -18,7 +18,7 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 TMDB_BASE = "https://api.themoviedb.org/3"
-DB_PATH = os.path.join(os.path.dirname(__file__), "watchnext.db")
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "watchnext.db"))
 
 # ---------------------------------------------------------------------------
 # Database helpers
