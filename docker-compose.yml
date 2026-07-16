@@ -17,13 +17,18 @@ services:
 
   # ── Backend (FastAPI) ──
   # Nessun dominio pubblico: ci parla solo nginx, via rete Docker interna.
+  # Il Postgres è una risorsa Coolify separata: niente servizio `db` qui, le DB_*
+  # vanno impostate nelle Environment Variables di Coolify e la risorsa Postgres
+  # deve stare sulla stessa rete Docker di questo stack.
   backend:
     build: ./backend
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY}
-      - DB_PATH=/data/watchnext.db
-    volumes:
-      - watchnext-data:/data
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
     healthcheck:
       # Anche qui 127.0.0.1: urllib ripiega su IPv4 da solo, ma tanto vale non
       # dipendere da quel fallback visto che uvicorn ascolta solo su IPv4.
@@ -37,7 +42,3 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-volumes:
-  watchnext-data:
-    name: "watchnext-data" # nome esplicito, così Coolify non lo rinomina a ogni deploy
