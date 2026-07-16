@@ -1,0 +1,35 @@
+services:
+  # ── Frontend (Nginx + React build) ──
+  # Coolify routes traffic here via Traefik
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_FQDN_FRONTEND
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend (FastAPI) ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - DB_PATH=/data/watchnext.db
+    volumes:
+      - watchnext-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  watchnext-data:
