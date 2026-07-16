@@ -1,0 +1,169 @@
+import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Search, Film, BookmarkCheck, Sparkles, TrendingUp } from 'lucide-react';
+import { api } from './api';
+
+import DiscoverPage from './pages/DiscoverPage';
+import WatchedPage from './pages/WatchedPage';
+import RecommendationsPage from './pages/RecommendationsPage';
+import DetailModal from './components/DetailModal';
+import Toast from './components/Toast';
+
+// ── Global context ──
+const AppContext = createContext();
+export const useApp = () => useContext(AppContext);
+
+export default function App() {
+  const [watchedMap, setWatchedMap] = useState({}); // key: `${tmdb_id}-${media_type}`
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const location = useLocation();
+
+  // Load watched list on mount
+  useEffect(() => {
+    api.getWatched().then((items) => {
+      const map = {};
+      items.forEach((it) => {
+        map[`${it.tmdb_id}-${it.media_type}`] = it;
+      });
+      setWatchedMap(map);
+    }).catch(() => {});
+  }, []);
+
+  const isWatched = useCallback(
+    (tmdbId, mediaType) => !!watchedMap[`${tmdbId}-${mediaType}`],
+    [watchedMap]
+  );
+
+  const addToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
+  }, []);
+
+  const toggleWatched = useCallback(async (item) => {
+    const key = `${item.tmdb_id || item.id}-${item.media_type}`;
+    const tmdbId = item.tmdb_id || item.id;
+
+    if (watchedMap[key]) {
+      try {
+        await api.removeWatched(tmdbId, item.media_type);
+        setWatchedMap((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        addToast('Rimosso dalla lista');
+      } catch {
+        addToast('Errore nella rimozione', 'error');
+      }
+    } else {
+      const payload = {
+        tmdb_id: tmdbId,
+        media_type: item.media_type,
+        title: item.title || item.name || '',
+        poster_path: item.poster_path || null,
+        vote_average: item.vote_average || null,
+        overview: item.overview || null,
+        genre_ids: JSON.stringify(item.genre_ids || []),
+        release_date: item.release_date || item.first_air_date || null,
+        rating: null,
+      };
+      try {
+        await api.addWatched(payload);
+        setWatchedMap((prev) => ({ ...prev, [key]: payload }));
+        addToast('Aggiunto alla lista ✓');
+      } catch (e) {
+        if (e.message.includes('409') || e.message.includes('Già')) {
+          addToast('Già nella lista', 'error');
+        } else {
+          addToast('Errore', 'error');
+        }
+      }
+    }
+  }, [watchedMap, addToast]);
+
+  const updateRating = useCallback(async (tmdbId, mediaType, rating) => {
+    try {
+      await api.updateRating(tmdbId, mediaType, rating);
+      const key = `${tmdbId}-${mediaType}`;
+      setWatchedMap((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], rating },
+      }));
+    } catch {
+      addToast('Errore nell\'aggiornamento', 'error');
+    }
+  }, [addToast]);
+
+  const ctx = {
+    watchedMap,
+    isWatched,
+    toggleWatched,
+    updateRating,
+    setSelectedItem,
+    addToast,
+  };
+
+  const navLinks = [
+    { to: '/', icon: TrendingUp, label: 'Scopri' },
+    { to: '/search', icon: Search, label: 'Cerca' },
+    { to: '/watched', icon: BookmarkCheck, label: 'Visti' },
+    { to: '/recommendations', icon: Sparkles, label: 'Per te' },
+  ];
+
+  return (
+    <AppContext.Provider value={ctx}>
+      <div className="app-layout">
+        {/* Sidebar */}
+        <nav className="sidebar">
+          <div className="sidebar-logo">
+            <Film size={20} style={{ display: 'inline', verticalAlign: '-3px', marginRight: 6 }} />
+            WatchNext
+          </div>
+          <div className="sidebar-nav">
+            {navLinks.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/'}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? 'active' : ''}`
+                }
+              >
+                <Icon />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          </div>
+          <div className="sidebar-footer">
+            Powered by TMDB
+          </div>
+        </nav>
+
+        {/* Main */}
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<DiscoverPage />} />
+            <Route path="/search" element={<DiscoverPage searchMode />} />
+            <Route path="/watched" element={<WatchedPage />} />
+            <Route path="/recommendations" element={<RecommendationsPage />} />
+          </Routes>
+        </main>
+      </div>
+
+      {/* Detail modal */}
+      {selectedItem && (
+        <DetailModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
+
+      {/* Toasts */}
+      <Toast toasts={toasts} />
+    </AppContext.Provider>
+  );
+}
