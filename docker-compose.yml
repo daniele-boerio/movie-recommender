@@ -1,36 +1,38 @@
 services:
+  # ── Frontend (Nginx + React build) ──
+  # Coolify routes external traffic here via Traefik
   frontend:
     build: ./frontend
     environment:
-      - "SERVICE_FQDN_FRONTEND=${SERVICE_FQDN_FRONTEND}"
+      - SERVICE_FQDN_FRONTEND
     depends_on:
       - backend
-    # Diciamo a Coolify/Traefik dove mandare il traffico del dominio del frontend
-    ports:
-      - "80"
     healthcheck:
-      # Usiamo una sintassi più robusta a riga singola per evitare problemi di parsing
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      # 127.0.0.1 e non localhost: nginx.conf fa solo `listen 80` (IPv4), mentre dentro
+      # il container localhost risolve prima su ::1 e busybox wget non ripiega su IPv4.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
       interval: 30s
       timeout: 5s
       retries: 3
 
+  # ── Backend (FastAPI) ──
+  # Nessun dominio pubblico: ci parla solo nginx, via rete Docker interna.
   backend:
     build: ./backend
     environment:
-      - "TMDB_API_KEY=${TMDB_API_KEY}"
-      - "SERVICE_FQDN_BACKEND=${SERVICE_FQDN_BACKEND}" # Utile se vuoi esporre anche le API
+      - TMDB_API_KEY=${TMDB_API_KEY}
       - DB_PATH=/data/watchnext.db
     volumes:
-      - "watchnext-data:/data"
-    ports:
-      - "8000"
+      - watchnext-data:/data
     healthcheck:
-      # Sostituito il comando python critico con un ben più semplice wget/curl (se disponibili nel container backend)
+      # Anche qui 127.0.0.1: urllib ripiega su IPv4 da solo, ma tanto vale non
+      # dipendere da quel fallback visto che uvicorn ascolta solo su IPv4.
       test:
         [
-          "CMD-SHELL",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/docs'')" || exit 1',
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs')",
         ]
       interval: 30s
       timeout: 5s
@@ -38,4 +40,4 @@ services:
 
 volumes:
   watchnext-data:
-    name: "watchnext-data" # Diamo un nome esplicito al volume per Coolify
+    name: "watchnext-data" # nome esplicito, così Coolify non lo rinomina a ogni deploy
