@@ -1,10 +1,8 @@
 services:
   # ── Frontend (Nginx + React build) ──
-  # Coolify routes traffic here via Traefik
+  # Coolify routes external traffic here via Traefik
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
     environment:
       - SERVICE_FQDN_FRONTEND
     depends_on:
@@ -17,9 +15,7 @@ services:
 
   # ── Backend (FastAPI) ──
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY}
       - DB_PATH=/data/watchnext.db
