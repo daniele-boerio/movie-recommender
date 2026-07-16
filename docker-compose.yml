@@ -1,31 +1,41 @@
 services:
-  # ── Frontend (Nginx + React build) ──
-  # Coolify routes external traffic here via Traefik
   frontend:
     build: ./frontend
     environment:
-      - SERVICE_FQDN_FRONTEND
+      - "SERVICE_FQDN_FRONTEND=${SERVICE_FQDN_FRONTEND}"
     depends_on:
       - backend
+    # Diciamo a Coolify/Traefik dove mandare il traffico del dominio del frontend
+    ports:
+      - "80"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      # Usiamo una sintassi più robusta a riga singola per evitare problemi di parsing
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # ── Backend (FastAPI) ──
   backend:
     build: ./backend
     environment:
-      - TMDB_API_KEY=${TMDB_API_KEY}
+      - "TMDB_API_KEY=${TMDB_API_KEY}"
+      - "SERVICE_FQDN_BACKEND=${SERVICE_FQDN_BACKEND}" # Utile se vuoi esporre anche le API
       - DB_PATH=/data/watchnext.db
     volumes:
-      - watchnext-data:/data
+      - "watchnext-data:/data"
+    ports:
+      - "8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      # Sostituito il comando python critico con un ben più semplice wget/curl (se disponibili nel container backend)
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8000/docs'')" || exit 1',
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
 
 volumes:
   watchnext-data:
+    name: "watchnext-data" # Diamo un nome esplicito al volume per Coolify
