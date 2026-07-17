@@ -2,7 +2,20 @@
 
 ## State management
 
-No Redux, no Zustand — plain React Context in `App.jsx`:
+No Redux, no Zustand — due Context distinti.
+
+### `AuthContext.jsx` — sessione
+
+```jsx
+const { user, loading, login, register, logout } = useAuth();
+```
+
+- `user` — `{ id, username, email }` oppure `null`
+- `loading` — vero finché il primo `/auth/me` non ha risposto. **Serve**: i cookie sono `httpOnly`,
+  quindi l'unico modo di sapere se la sessione è viva è chiederlo al server, e senza questa attesa
+  comparirebbe il login per un istante a ogni ricarica.
+
+### `App.jsx` — resto dello stato
 
 ```jsx
 const AppContext = createContext();
@@ -19,11 +32,23 @@ Context provides:
 
 Every component that needs global state uses `const { ... } = useApp()`.
 
+## Gate di autenticazione
+
+`App.jsx` fa da cancello: `loading` → spinner; `!user` → solo `/login` e `/register` (tutto il
+resto redirige al login); `user` → `<AuthenticatedApp key={user.id} />`.
+
+**Quel `key={user.id}` non è decorativo**: cambiando utente forza React a rimontare tutto, quindi
+`watchedMap` non può sopravvivere da una sessione all'altra e mostrare la lista di qualcun altro.
+
 ## API layer (`src/api.js`)
 
 All backend calls go through the `api` object. Pattern:
 
 ```js
+api.requestCode(email)                  // → POST /api/auth/register/request
+api.register({email, code, username, password})  // → POST /api/auth/register
+api.login(identifier, password)         // → POST /api/auth/login  (identifier = username o email)
+api.logout()  ·  api.me()               // → POST /api/auth/logout  ·  GET /api/auth/me
 api.search(query, mediaType, page)      // → GET /api/search
 api.trending(mediaType, page)           // → GET /api/trending
 api.details(mediaType, id)              // → GET /api/details/{type}/{id}
@@ -33,6 +58,17 @@ api.removeWatched(tmdbId, mediaType)    // → DELETE /api/watched/{id}/{type}
 api.updateRating(tmdbId, mediaType, r)  // → PATCH /api/watched/{id}/{type}
 api.getRecommendations(limit)           // → GET /api/recommendations
 ```
+
+**Autenticazione: non c'è niente da fare nei componenti.** I cookie sono `httpOnly`, il browser li
+allega da solo, JavaScript non li vede e non li tocca. Nessun header `Authorization`, nessun token
+da salvare.
+
+**Refresh automatico sul 401**: `request()` intercetta un 401, chiama `/auth/refresh` **una volta**
+e ripete la chiamata. Senza, l'utente verrebbe buttato fuori ogni 30 minuti (durata dell'access
+token) pur avendo una sessione valida da 90 giorni. Gli endpoint in `NO_REFRESH_RETRY`
+(login, register, refresh, logout) sono esclusi: lì un 401 è una risposta legittima, e su
+`/refresh` stesso ritentare creerebbe un ciclo infinito. Se anche il refresh fallisce, scatta
+`onSessionExpired` e l'AuthContext riporta al login.
 
 Image helpers:
 ```js
@@ -73,16 +109,28 @@ Closes on Escape key, overlay click, or X button.
 
 ## Routing
 
+Non autenticati:
 ```jsx
-<Routes>
-  <Route path="/"                element={<DiscoverPage />} />
-  <Route path="/search"          element={<DiscoverPage searchMode />} />
-  <Route path="/watched"         element={<WatchedPage />} />
-  <Route path="/recommendations" element={<RecommendationsPage />} />
-</Routes>
+<Route path="/login"    element={<LoginPage />} />
+<Route path="/register" element={<RegisterPage />} />
+<Route path="*"         element={<Navigate to="/login" replace />} />
 ```
 
-Sidebar nav in App.jsx uses `<NavLink>` with `end` prop on `/`.
+Autenticati:
+```jsx
+<Route path="/"                element={<DiscoverPage />} />
+<Route path="/search"          element={<DiscoverPage searchMode />} />
+<Route path="/watched"         element={<WatchedPage />} />
+<Route path="/recommendations" element={<RecommendationsPage />} />
+<Route path="*"                element={<Navigate to="/" replace />} />
+```
+
+Sidebar nav in App.jsx uses `<NavLink>` with `end` prop on `/`. Il footer della sidebar mostra
+username e il bottone di logout.
+
+`RegisterPage` è a **due passi** nello stesso componente (stato `step`): email → codice +
+username + password. Si passa al passo 2 **anche se l'email è già registrata**, perché il backend
+risponde identico apposta per non rivelare quali indirizzi hanno un account.
 
 ## Design system (index.css)
 
@@ -134,3 +182,8 @@ Key CSS classes:
 - Watched items from the database use `tmdb_id` as the ID field; TMDB results use `id`. Components handle both: `item.tmdb_id || item.id`.
 - `genre_ids` is stored as a JSON string in the DB but as an array from TMDB. The `addWatched` function in App.jsx does `JSON.stringify()`.
 - Vite dev proxy (`vite.config.js`) forwards `/api` to `localhost:8000`. In production, Nginx does this.
+- **Il proxy non è un dettaglio di comodità: è ciò che rende FE e BE same-origin**, ed è l'unico
+  motivo per cui i cookie `httpOnly` funzionano. Se un giorno il frontend chiamasse il backend su
+  un dominio diverso, l'auth si romperebbe (servirebbero CORS con credenziali e `SameSite=None`).
+- In locale serve `COOKIE_SECURE=false` nel `.env` del backend: si gira su http, e con `Secure`
+  attivo il browser scarterebbe i cookie facendo fallire il login in modo silenzioso.

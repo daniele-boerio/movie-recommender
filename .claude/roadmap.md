@@ -34,40 +34,28 @@ Oppure creare una tabella `watchlist` separata con la stessa struttura di `watch
 
 ---
 
-## 2. Autenticazione multi-utente
+## 2. Autenticazione multi-utente — ✅ FATTO (17/07/2026)
 
-Permettere a più persone di usare la stessa istanza, ognuno con la propria lista.
+Implementata. Com'è andata davvero, dove differisce da questo piano e perché:
 
-**Approccio consigliato:** JWT semplice, senza OAuth per ora.
+- **Registrazione aperta con verifica email**, non a invito: chiunque chiede un codice alla
+  propria email e si registra. Il codice prova che l'indirizzo è suo, **non** limita chi entra.
+  Scelta consapevole. Il codice è legato all'email richiedente (altrimenti non verificherebbe nulla),
+  hashato con bcrypt, scade in 15 min, max 5 tentativi, rate limit 3/ora per IP.
+- **Token in cookie `httpOnly`**, non in `localStorage`: FE e BE sono same-origin, quindi si può,
+  e un XSS non può rubare quello che JavaScript non vede. Niente header `Authorization`.
+  Access token (JWT, 30 min) + refresh opaco (90 giorni) con rotazione e **reuse detection**.
+- **bcrypt diretto**, non passlib (non manutenuto e in conflitto con bcrypt ≥ 4.1).
+- **PostgreSQL fatto insieme** (punto 6), non dopo: il DB era vuoto, quindi costava quasi nulla.
 
-**Database:**
-```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+**⚠️ L'errore che c'era in questo piano** (lasciato come monito): proponeva solo
+`ALTER TABLE watched ADD COLUMN user_id`. **Non basta.** `watched` aveva `UNIQUE(tmdb_id, media_type)`:
+senza portarlo a `UNIQUE(user_id, tmdb_id, media_type)` il secondo utente che segna un film già
+segnato da un altro prende un 409. Su SQLite avrebbe anche richiesto di ricostruire la tabella,
+perché non sa rimuovere un vincolo con `ALTER TABLE`.
 
--- Aggiungere foreign key a watched (e watchlist)
-ALTER TABLE watched ADD COLUMN user_id INTEGER REFERENCES users(id);
-```
-
-**Backend:**
-- `POST /api/auth/register` — crea utente (hash con `bcrypt` o `passlib`)
-- `POST /api/auth/login` — restituisce JWT token
-- Middleware/dependency FastAPI che estrae `user_id` dal token JWT
-- Tutte le query `watched` filtrate per `user_id`
-- Dipendenza aggiuntiva: `python-jose[cryptography]` e `passlib[bcrypt]`
-
-**Frontend:**
-- Pagina login/register
-- Salvare JWT in `localStorage`, inviare come header `Authorization: Bearer ...`
-- Wrapper in `api.js` che aggiunge l'header automaticamente
-- Redirect a login se 401
-- Mostrare username nella sidebar
-
-**Nota:** se si aggiunge auth, valutare il passaggio a PostgreSQL (vedi punto 6).
+Vale per qualsiasi feature futura: **aggiungere `user_id` a una tabella significa rivedere anche
+i suoi vincoli univoci**, non solo aggiungere la colonna.
 
 ---
 
@@ -148,9 +136,23 @@ Dashboard con statistiche sui gusti dell'utente.
 
 ---
 
-## 6. Migrazione da SQLite a PostgreSQL
+## 6. Migrazione da SQLite a PostgreSQL — ✅ FATTO (17/07/2026)
 
-Necessaria se si implementa il multi-utente o si vuole più robustezza.
+Fatta insieme all'auth (punto 2), approfittando del DB vuoto: nessun travaso di dati.
+
+Differenze rispetto al piano sotto: il Postgres **non** sta nel docker-compose, è una risorsa
+Coolify separata (le `DB_*` arrivano dalle Environment Variables). Si usa SQLAlchemy sincrono +
+psycopg2 + Alembic per le migrazioni, che girano al boot del container
+(`CMD: alembic upgrade head && uvicorn ...`).
+
+Due trappole incontrate, per il futuro:
+- **La porta interna è 5432, non quella pubblica.** Coolify espone il Postgres sull'host mappando
+  `5433 → 5432`: parlando al container per nome si è dentro la rete Docker, dove vale la 5432.
+- **Le risorse Coolify nascono su reti Docker separate.** Se il backend non condivide una rete col
+  Postgres, il nome del container non si risolve (`could not translate host name`) — che è un
+  fallimento **DNS**, non di connessione: distinguere i due errori fa risparmiare ore.
+
+Il piano originale, per riferimento:
 
 **docker-compose.yml:**
 ```yaml

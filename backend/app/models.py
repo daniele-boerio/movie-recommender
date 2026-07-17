@@ -71,6 +71,9 @@ class Watched(Base):
     __tablename__ = "watched"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     tmdb_id = Column(Integer, nullable=False)
     media_type = Column(String, nullable=False)
     title = Column(String, nullable=False)
@@ -83,6 +86,11 @@ class Watched(Base):
     rating = Column(Integer)  # voto personale 1-10
 
     __table_args__ = (
-        UniqueConstraint("tmdb_id", "media_type", name="uq_watched_tmdb_media"),
+        # user_id DEVE far parte del vincolo: senza, il secondo utente che segna un
+        # film già segnato da un altro prenderebbe un 409. È l'errore del piano
+        # scritto in .claude/roadmap.md, che proponeva solo di aggiungere la colonna.
+        UniqueConstraint(
+            "user_id", "tmdb_id", "media_type", name="uq_watched_user_tmdb_media"
+        ),
         CheckConstraint("media_type IN ('movie','tv')", name="ck_watched_media_type"),
     )

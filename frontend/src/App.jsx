@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Search, Film, BookmarkCheck, Sparkles, TrendingUp } from 'lucide-react';
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { Search, Film, BookmarkCheck, Sparkles, TrendingUp, LogOut } from 'lucide-react';
 import { api } from './api';
+import { useAuth } from './AuthContext';
 
 import DiscoverPage from './pages/DiscoverPage';
 import WatchedPage from './pages/WatchedPage';
 import RecommendationsPage from './pages/RecommendationsPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DetailModal from './components/DetailModal';
 import Toast from './components/Toast';
 
@@ -14,10 +17,38 @@ const AppContext = createContext();
 export const useApp = () => useContext(AppContext);
 
 export default function App() {
+  const { user, loading } = useAuth();
+
+  // I cookie sono httpOnly: sapere se la sessione è viva richiede un giro sul server.
+  // Senza questa attesa comparirebbe il login per un istante a ogni ricarica.
+  if (loading) {
+    return (
+      <div className="auth-layout">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // key={user.id}: cambiando utente React rimonta tutto, quindi watchedMap non può
+  // sopravvivere da una sessione all'altra e mostrare la lista di qualcun altro.
+  return <AuthenticatedApp key={user.id} />;
+}
+
+function AuthenticatedApp() {
+  const { user, logout } = useAuth();
   const [watchedMap, setWatchedMap] = useState({}); // key: `${tmdb_id}-${media_type}`
   const [selectedItem, setSelectedItem] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const location = useLocation();
 
   // Load watched list on mount
   useEffect(() => {
@@ -139,6 +170,12 @@ export default function App() {
             ))}
           </div>
           <div className="sidebar-footer">
+            <div className="sidebar-user">
+              <span className="sidebar-username" title={user.email}>{user.username}</span>
+              <button className="sidebar-logout" onClick={logout} title="Esci">
+                <LogOut size={15} />
+              </button>
+            </div>
             Powered by TMDB
           </div>
         </nav>
@@ -150,6 +187,8 @@ export default function App() {
             <Route path="/search" element={<DiscoverPage searchMode />} />
             <Route path="/watched" element={<WatchedPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
+            {/* Già autenticati: /login e /register non hanno più senso */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

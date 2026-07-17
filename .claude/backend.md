@@ -1,102 +1,130 @@
-# Backend — FastAPI + TMDB + SQLite
+# Backend — FastAPI + TMDB + PostgreSQL
 
-## Code structure (all in main.py)
+## Code structure
 
-The backend is a single-file FastAPI app. Sections in order:
+Split in moduli sotto `backend/app/`:
 
-1. **Config** — `TMDB_API_KEY`, `TMDB_BASE`, `DB_PATH` from env vars
-2. **Database helpers** — `get_db()` returns sqlite3 connection with Row factory, `init_db()` creates the `watched` table
-3. **App lifecycle** — `lifespan()` runs `init_db()` on startup
-4. **TMDB helper** — `tmdb_get(path, params)` wraps all TMDB API calls with `api_key` and `language=it-IT`
-5. **Pydantic models** — `WatchedItem`, `RatingUpdate`
-6. **Routes** — grouped by purpose (see below)
+1. **`config.py`** — tutte le env var, `load_dotenv()`, `DATABASE_URL` (password via `quote_plus`)
+2. **`database.py`** — `engine` (con `pool_pre_ping`), `SessionLocal`, `Base`, `get_db()`
+3. **`models.py`** — SQLAlchemy: `User`, `EmailVerification`, `RefreshToken`, `Watched`
+4. **`schemas.py`** — Pydantic
+5. **`auth.py`** — hashing, JWT, cookie, `get_current_user_id`
+6. **`emailer.py`** — SMTP, con mock in dev
+7. **`rate_limit.py`** — slowapi
+8. **`tmdb.py`** — `tmdb_get(path, params)`, aggiunge `api_key` e `language=it-IT`
+9. **`routers/`** — `auth`, `search`, `watched`, `recommendations`
+10. **`services/recommender.py`** — algoritmo di scoring
+
+`main.py` contiene solo app, CORS, handler del rate limit e `include_router`.
 
 ## Database schema
 
 ```sql
-watched (
-    id              INTEGER PRIMARY KEY,
-    tmdb_id         INTEGER NOT NULL,
-    media_type      TEXT NOT NULL CHECK('movie','tv'),
-    title           TEXT NOT NULL,
-    poster_path     TEXT,
-    vote_average    REAL,
-    overview        TEXT,
-    genre_ids       TEXT,          -- JSON string: "[28,12,53]"
-    release_date    TEXT,
-    added_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    rating          INTEGER,       -- user's personal rating 1-10
-    UNIQUE(tmdb_id, media_type)
-)
+users (id, email UNIQUE, username UNIQUE, password_hash,
+       token_version INT DEFAULT 1, created_at)      -- email/username SEMPRE lowercase
+
+email_verifications (id, email, code_hash, expires_at, consumed_at,
+                     attempts INT DEFAULT 0, created_at)
+
+refresh_tokens (id, user_id FK→users ON DELETE CASCADE, token_hash UNIQUE,
+                family_id, expires_at, created_at, used_at, revoked_at, user_agent)
+
+watched (id, user_id FK→users ON DELETE CASCADE, tmdb_id, media_type CHECK('movie','tv'),
+         title, poster_path, vote_average, overview, genre_ids, release_date,
+         added_at, rating,
+         UNIQUE(user_id, tmdb_id, media_type))       -- ← user_id DEVE esserci
 ```
 
-`genre_ids` is stored as a JSON string, parsed with `json.loads()` in the recommendation engine.
+`genre_ids` è una stringa JSON, parsata con `json.loads()` nel motore di raccomandazione.
+
+**Il vincolo su `watched` include `user_id`**: senza, due utenti non potrebbero avere lo stesso
+titolo in lista (il secondo prenderebbe un 409). Vale per ogni tabella per-utente che aggiungerai.
+
+## Migrazioni (Alembic)
+
+Lo schema **non** lo crea l'app: nessun `create_all`. In produzione le migrazioni girano al boot
+(`CMD: alembic upgrade head && uvicorn ...`), in locale si lanciano a mano.
+
+```bash
+cd backend
+.venv/Scripts/python.exe -m alembic revision --autogenerate -m "descrizione"
+.venv/Scripts/python.exe -m alembic upgrade head
+```
+
+`alembic/env.py` prende `DATABASE_URL` e i metadati da `app.config` / `app.database`: l'URL **non**
+sta in `alembic.ini`, così non si duplica un segreto in un file committato.
+
+**Rileggi sempre la migrazione autogenerata.** Alembic sbaglia o omette: crea le foreign key
+con nome `None` (e allora il `downgrade` non gira — vanno nominate a mano), e non sa che una
+colonna `NOT NULL` senza default fallisce su una tabella già popolata.
+
+## Auth
+
+**Registrazione in due passi**
+1. `POST /api/auth/register/request {email}` — genera il codice, lo spedisce, `3/hour` per IP.
+   Risposta **sempre identica** anche se l'email esiste già: altrimenti l'endpoint rivelerebbe
+   quali indirizzi hanno un account.
+2. `POST /api/auth/register {email, code, username, password}` — valida e crea l'utente.
+
+Il codice è di 6 caratteri (alfabeto senza `0/O/1/I/L`), hashato con **bcrypt** perché a bassa
+entropia, scade in 15 min, max 5 tentativi.
+
+**Sessione** — `POST /api/auth/login` · `/refresh` · `/logout`, `GET /api/auth/me`, `/sessions`.
+
+**Cookie**: `access_token` (JWT, 30 min, `path=/api`) e `refresh_token` (opaco, 90 giorni,
+`path=/api/auth`, in DB solo l'hash SHA-256). Entrambi `httpOnly` + `SameSite=Lax`; `Secure`
+governato da `COOKIE_SECURE` (**`false` in locale**, altrimenti su http il browser li scarta).
+
+**Rotazione e reuse detection**: ogni `/refresh` ruota il token. Se ne viene presentato uno già
+usato è un replay (cookie copiato): non potendo sapere chi sia la vittima, si revoca l'**intera
+famiglia** e si logga un warning. È il posto dove guardare se un utente viene sloggato di colpo.
+
+**`token_version`** su `User`: incrementandola si invalidano tutti gli access token già emessi
+(es. al cambio password) senza aspettarne la scadenza.
+
+**Anti-enumeration**: `/login` confronta con `_DUMMY_PASSWORD_HASH` quando l'utente non esiste,
+così utente inesistente e password errata costano lo stesso e rispondono identico.
 
 ## Route groups
 
-### Search & discovery (`/api/search`, `/api/trending`, `/api/details`, `/api/genres`, `/api/discover`)
-Pure TMDB proxies. Always add `media_type` to results so the frontend knows if it's a movie or TV show. Multi-search can return "person" results — filter those out.
+### Search & discovery (`/api/search`, `/trending`, `/details`, `/genres`, `/discover`)
+Puri proxy TMDB, **pubblici** (nessun dato dell'utente). Aggiungere sempre `media_type` ai
+risultati. `/search/multi` restituisce anche le persone: vanno filtrate.
 
-### Watched list CRUD (`/api/watched`)
-- `GET` returns all rows ordered by `added_at DESC`
-- `POST` inserts with UNIQUE constraint on `(tmdb_id, media_type)` — catch `IntegrityError` → 409
-- `PATCH /{tmdb_id}/{media_type}` updates the personal `rating`
-- `DELETE /{tmdb_id}/{media_type}` removes
+### Watched (`/api/watched`) — richiede auth
+`GET` la lista dell'utente · `POST` (`IntegrityError` → 409) · `PATCH /{tmdb_id}/{media_type}`
+per il voto · `DELETE`. **Ogni query filtra per `user_id`.** Un titolo non proprio dà **404**,
+non 403: non riveliamo cosa hanno gli altri.
 
-### Recommendations (`/api/recommendations`)
-The engine:
-1. Load all watched items from DB
-2. Build a genre profile: `Counter` of genre IDs weighted by personal rating
-3. For each watched item (capped at 30), fetch `/recommendations` and `/similar` from TMDB
-4. Score each candidate: `frequency * 10 + tmdb_vote * 2 + personal_rating * 1.5 + genre_overlap`
-5. Exclude already-watched items
-6. Return top N sorted by score, with `recommended_by` list (max 3 titles)
+### Recommendations (`/api/recommendations`) — richiede auth
+1. Carica i visti dell'utente (`order_by(added_at.desc())` esplicito: Postgres non garantisce
+   un ordine, e il motore campiona i primi 30)
+2. Profilo dei generi: `Counter` pesato sul voto personale
+3. Per ogni titolo (max 30) chiede `/recommendations` e `/similar` a TMDB
+4. Score: `frequency*10 + tmdb_vote*2 + personal_rating*1.5 + genre_overlap`
+5. Esclude i già visti, restituisce i primi N con `recommended_by` (max 3)
 
 ## TMDB API patterns
 
-- Base: `https://api.themoviedb.org/3`
-- Auth: query param `api_key=...`
-- Movie search: `/search/movie?query=...`
-- TV search: `/search/tv?query=...`
-- Multi search: `/search/multi?query=...` (returns movies, TV, persons)
+- Base: `https://api.themoviedb.org/3` · auth via query param `api_key=...`
+- Search: `/search/movie` · `/search/tv` · `/search/multi`
 - Trending: `/trending/{media_type}/{time_window}`
 - Details: `/{media_type}/{id}?append_to_response=credits,similar,recommendations,videos`
-- Similar: `/{media_type}/{id}/similar`
-- Recommendations: `/{media_type}/{id}/recommendations`
-- Genres list: `/genre/{media_type}/list`
-- Discover: `/discover/{media_type}?with_genres=28&sort_by=popularity.desc`
-- Images: `https://image.tmdb.org/t/p/{size}{path}` — sizes: `w92`, `w154`, `w185`, `w342`, `w500`, `w780`, `original`
+- Similar / Recommendations: `/{media_type}/{id}/similar` · `/recommendations`
+- Genres: `/genre/{media_type}/list` · Discover: `/discover/{media_type}?with_genres=28`
+- Images: `https://image.tmdb.org/t/p/{size}{path}` — `w92`…`w780`, `original`
 
 ## Adding a new endpoint
 
-1. Define the route with `@app.get("/api/your-endpoint")` or appropriate method
-2. Use `tmdb_get()` for any TMDB calls
-3. Use `get_db()` for any database operations — always close the connection
-4. Add the corresponding fetch function in `frontend/src/api.js`
-5. Return JSON-serializable dicts/lists
+1. Route nel router giusto sotto `routers/` (o un nuovo router + `include_router` in `main.py`)
+2. `Depends(get_db)` per il DB, `Depends(get_current_user_id)` se tocca dati dell'utente
+3. **Filtra per `user_id`** ogni query su dati per-utente
+4. `tmdb_get()` per TMDB
+5. Aggiungi la fetch in `frontend/src/api.js`
 
 ## Error handling
 
-- TMDB errors: `httpx` raises on non-2xx, caught in the recommendation loop with `try/except` to skip failures
-- DB errors: `IntegrityError` for duplicates → 409
-- Missing API key: `tmdb_get()` raises 503
-
-## If splitting into multiple files
-
-Suggested structure:
-```
-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py          # FastAPI app, lifespan, CORS
-│   ├── config.py        # env vars, constants
-│   ├── database.py      # get_db, init_db, schema
-│   ├── tmdb.py          # tmdb_get, image URL helpers
-│   ├── models.py        # Pydantic schemas
-│   ├── routes/
-│   │   ├── search.py
-│   │   ├── watched.py
-│   │   └── recommendations.py
-│   └── services/
-│       └── recommender.py  # scoring algorithm
-```
+- TMDB: `httpx` solleva su non-2xx; nel motore di raccomandazione è dentro `try/except` per
+  saltare i fallimenti senza far cadere l'intera risposta
+- Duplicati: `IntegrityError` → 409 · Non trovato / non tuo → 404
+- `TMDB_API_KEY` mancante → 503 · `SECRET_KEY` mancante → l'app **non parte** (fail-fast voluto)
