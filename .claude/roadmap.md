@@ -122,7 +122,17 @@ Trakt ha una API pubblica. Serve registrare un'app su trakt.tv per ottenere un `
 
 ---
 
-## 5. Statistiche personali
+## 5. Statistiche personali — ✅ FATTO (18/07/2026)
+
+`StatsPage` + `GET /api/stats`. Scelte:
+- **Niente recharts:** grafici a barre in puro CSS (coerenti col design system), zero dipendenze.
+- **Endpoint solo-DB:** calcola totali, voto medio, preferito, top generi (conteggio sui `genre_ids`),
+  timeline ultimi 12 mesi. **I nomi dei generi li risolve il frontend** (che li ha già caricati),
+  così `/api/stats` non chiama TMDB e resta veloce.
+- Contenuti: 4 tile (film/serie/totale/voto medio), barre "generi più visti", card "il tuo preferito"
+  (cliccabile → DetailModal), istogramma aggiunte per mese.
+
+Piano originale sotto, per riferimento.
 
 Dashboard con statistiche sui gusti dell'utente.
 

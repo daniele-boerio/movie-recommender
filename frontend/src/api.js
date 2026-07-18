@@ -137,6 +137,10 @@ export const api = {
   unmarkSeason: (tmdbId, seasonNumber) =>
     request(`/progress/${tmdbId}/season/${seasonNumber}`, { method: 'DELETE' }),
 
+  // Statistiche personali
+  getStats: () =>
+    request('/stats'),
+
   // Recommendations
   getRecommendations: (limit = 20) =>
     request(`/recommendations?limit=${limit}`),

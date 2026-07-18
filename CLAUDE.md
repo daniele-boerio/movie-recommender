@@ -48,7 +48,7 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       ├── emailer.py          # SMTP (mock in dev se non configurato)
 │       ├── rate_limit.py       # slowapi
 │       ├── tmdb.py             # tmdb_get
-│       ├── routers/            # auth, search, watched, watchlist, progress, recommendations
+│       ├── routers/            # auth, search, watched, watchlist, progress, stats, recommendations
 │       └── services/recommender.py
 ├── frontend/
 │   ├── Dockerfile              # Multi-stage: node build → nginx serve
@@ -65,6 +65,7 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       │   ├── DiscoverPage.jsx      # Trending + search
 │       │   ├── WatchedPage.jsx       # User's watched list with filters
 │       │   ├── WatchlistPage.jsx     # Lista "Da vedere" (stessa tabella watched, status='watchlist')
+│       │   ├── StatsPage.jsx         # Statistiche personali (grafici CSS, GET /api/stats)
 │       │   ├── RecommendationsPage.jsx
 │       │   ├── LoginPage.jsx
 │       │   └── RegisterPage.jsx      # Due passi: email → codice + credenziali

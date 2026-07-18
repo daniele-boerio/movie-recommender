@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, LogOut } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
 import DiscoverPage from './pages/DiscoverPage';
 import WatchedPage from './pages/WatchedPage';
 import WatchlistPage from './pages/WatchlistPage';
+import StatsPage from './pages/StatsPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -211,6 +212,7 @@ function AuthenticatedApp() {
     { to: '/watched', icon: BookmarkCheck, label: 'Visti' },
     { to: '/watchlist', icon: Bookmark, label: 'Da vedere' },
     { to: '/recommendations', icon: Sparkles, label: 'Per te' },
+    { to: '/stats', icon: BarChart3, label: 'Statistiche' },
   ];
 
   return (
@@ -255,6 +257,7 @@ function AuthenticatedApp() {
             <Route path="/search" element={<DiscoverPage searchMode />} />
             <Route path="/watched" element={<WatchedPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/stats" element={<StatsPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
             {/* Già autenticati: /login e /register non hanno più senso */}
             <Route path="*" element={<Navigate to="/" replace />} />
