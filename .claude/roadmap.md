@@ -56,7 +56,21 @@ i suoi vincoli univoci**, non solo aggiungere la colonna.
 
 ---
 
-## 3. Filtri avanzati nella ricerca
+## 3. Filtri avanzati nella ricerca — ✅ FATTO (18/07/2026)
+
+Implementati in `DiscoverPage`: pannello a scomparsa con generi (chip multi-select), range anno,
+voto minimo, ordinamento; chip dei filtri attivi rimovibili. Scelte prese:
+- **Due modalità:** senza testo i filtri guidano `/api/discover` (lato server); con una ricerca
+  testuale (TMDB non filtra il search) i filtri si applicano **lato client** sui risultati.
+- **`/api/discover` esteso** con `year_from`/`year_to`/`vote_min` (tradotti nei parametri TMDB
+  giusti: `primary_release_date` per i film, `first_air_date` per le serie) + guardia
+  `vote_count.gte=50` per non far svettare titoli con un solo voto.
+- **Generi in OR** (`with_genres` con `|`), coerente col filtro client (`some`).
+- **"Tutti" + filtri** ripiega su `movie` (discover vuole un tipo concreto; niente merge film+tv).
+  Cambiando tab i generi selezionati si azzerano (gli id genere di film e serie differiscono).
+- **"Carica altri"** ora fa append reale invece di sostituire i risultati.
+
+Piano originale sotto, per riferimento.
 
 Aggiungere filtri per genere, anno, voto minimo nella pagina Scopri/Cerca.
 

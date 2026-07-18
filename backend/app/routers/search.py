@@ -71,19 +71,38 @@ async def discover(
     media_type: str,
     with_genres: str | None = None,
     with_original_language: str | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    vote_min: float | None = None,
     sort_by: str = "popularity.desc",
     page: int = 1,
 ):
-    """Scopri film/serie per genere, lingua originale, ordinamento, ecc.
+    """Scopri film/serie per genere, anno, voto, lingua originale, ordinamento.
 
     La lingua originale serve per gli anime: TMDB non li classifica a parte, sono serie
     con genere Animazione (16) e `with_original_language=ja`.
+
+    I nomi "puliti" (year_from/year_to/vote_min) li traduciamo qui nei parametri TMDB,
+    che cambiano tra film (primary_release_date) e serie (first_air_date) e hanno il punto
+    nel nome (non esprimibile come parametro Python).
     """
     params = {"sort_by": sort_by, "page": page}
     if with_genres:
         params["with_genres"] = with_genres
     if with_original_language:
         params["with_original_language"] = with_original_language
+
+    if vote_min is not None:
+        params["vote_average.gte"] = vote_min
+        # Senza una soglia di voti, un titolo con 1 solo voto a 10 svetterebbe: lo evitiamo.
+        params["vote_count.gte"] = 50
+
+    date_field = "first_air_date" if media_type == "tv" else "primary_release_date"
+    if year_from:
+        params[f"{date_field}.gte"] = f"{year_from}-01-01"
+    if year_to:
+        params[f"{date_field}.lte"] = f"{year_to}-12-31"
+
     data = await tmdb_get(f"/discover/{media_type}", params)
     for r in data.get("results", []):
         r["media_type"] = media_type

@@ -42,13 +42,13 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       ├── main.py             # FastAPI app, CORS, include_router
 │       ├── config.py           # env vars + load_dotenv()
 │       ├── database.py         # engine, SessionLocal, get_db
-│       ├── models.py           # SQLAlchemy: User, EmailVerification, RefreshToken, Watched
+│       ├── models.py           # SQLAlchemy: User, EmailVerification, RefreshToken, Watched, EpisodeProgress
 │       ├── schemas.py          # Pydantic
 │       ├── auth.py             # hashing, JWT, cookie, get_current_user_id
 │       ├── emailer.py          # SMTP (mock in dev se non configurato)
 │       ├── rate_limit.py       # slowapi
 │       ├── tmdb.py             # tmdb_get
-│       ├── routers/            # auth, search, watched, watchlist, recommendations
+│       ├── routers/            # auth, search, watched, watchlist, progress, recommendations
 │       └── services/recommender.py
 ├── frontend/
 │   ├── Dockerfile              # Multi-stage: node build → nginx serve
@@ -69,8 +69,9 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       │   ├── LoginPage.jsx
 │       │   └── RegisterPage.jsx      # Due passi: email → codice + credenziali
 │       └── components/
-│           ├── MediaCard.jsx         # Poster card (used everywhere)
+│           ├── MediaCard.jsx         # Poster card (used everywhere) + azioni rapide visto/watchlist
 │           ├── DetailModal.jsx       # Full detail overlay
+│           ├── EpisodeTracker.jsx    # Progresso episodi per serie/anime (dentro DetailModal)
 │           ├── StarRating.jsx        # 1-10 personal rating
 │           └── Toast.jsx             # Notification system
 ```
