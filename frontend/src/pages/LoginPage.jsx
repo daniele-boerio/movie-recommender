@@ -57,7 +57,7 @@ export default function LoginPage() {
 
           {error && <div className="auth-error">{error}</div>}
 
-          <button className="btn-primary auth-submit" type="submit" disabled={busy}>
+          <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
             <LogIn size={16} />
             {busy ? 'Accesso…' : 'Accedi'}
           </button>

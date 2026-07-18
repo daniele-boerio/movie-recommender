@@ -70,7 +70,7 @@ export default function RegisterPage() {
 
               {error && <div className="auth-error">{error}</div>}
 
-              <button className="btn-primary auth-submit" type="submit" disabled={busy}>
+              <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
                 <Mail size={16} />
                 {busy ? 'Invio…' : 'Inviami il codice'}
               </button>
@@ -127,7 +127,7 @@ export default function RegisterPage() {
 
               {error && <div className="auth-error">{error}</div>}
 
-              <button className="btn-primary auth-submit" type="submit" disabled={busy}>
+              <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
                 <UserPlus size={16} />
                 {busy ? 'Creazione…' : 'Crea account'}
               </button>
