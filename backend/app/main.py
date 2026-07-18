@@ -14,7 +14,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from .rate_limit import limiter
-from .routers import auth, recommendations, search, watched
+from .routers import auth, progress, recommendations, search, watched, watchlist
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,4 +36,6 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(search.router)
 app.include_router(watched.router)
+app.include_router(watchlist.router)
+app.include_router(progress.router)
 app.include_router(recommendations.router)

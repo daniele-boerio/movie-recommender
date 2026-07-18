@@ -46,6 +46,21 @@ class LoginRequest(BaseModel):
     password: str
 
 
+# --- Progresso episodi ---
+
+class EpisodeRef(BaseModel):
+    """Riferimento a un singolo episodio di una serie."""
+
+    season_number: int = Field(..., ge=0)
+    episode_number: int = Field(..., ge=0)
+
+
+class SeasonMark(BaseModel):
+    """Segna in blocco un insieme di episodi di una stagione."""
+
+    episode_numbers: list[int] = Field(..., min_length=1)
+
+
 class UserResponse(BaseModel):
     id: int
     username: str

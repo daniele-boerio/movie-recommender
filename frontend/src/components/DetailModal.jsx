@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { X, BookmarkPlus, BookmarkCheck, Star, ExternalLink } from 'lucide-react';
+import { X, Bookmark, BookmarkPlus, BookmarkCheck, Star, ExternalLink } from 'lucide-react';
 import { api, posterUrl, backdropUrl } from '../api';
 import { useApp } from '../App';
 import StarRating from './StarRating';
+import EpisodeTracker from './EpisodeTracker';
 
 export default function DetailModal({ item, onClose }) {
-  const { isWatched, toggleWatched, watchedMap, updateRating } = useApp();
+  const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, watchedMap, updateRating } = useApp();
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const tmdbId = item.tmdb_id || item.id;
   const mediaType = item.media_type;
   const watched = isWatched(tmdbId, mediaType);
+  const inWatchlist = isInWatchlist(tmdbId, mediaType);
   const watchedData = watchedMap[`${tmdbId}-${mediaType}`];
   const currentRating = watchedData?.rating;
 
@@ -41,15 +43,18 @@ export default function DetailModal({ item, onClose }) {
   const vote = details?.vote_average;
   const cast = details?.credits?.cast?.slice(0, 6) || [];
 
-  const handleToggle = () => {
-    toggleWatched({
-      ...item,
-      id: tmdbId,
-      tmdb_id: tmdbId,
-      title: title,
-      genre_ids: details?.genres?.map((g) => g.id) || item.genre_ids || [],
-    });
-  };
+  // Stesso item arricchito per entrambe le azioni: al momento del click abbiamo i
+  // dettagli TMDB (generi in chiaro), che l'item della card magari non aveva.
+  const enrichedItem = () => ({
+    ...item,
+    id: tmdbId,
+    tmdb_id: tmdbId,
+    title: title,
+    genre_ids: details?.genres?.map((g) => g.id) || item.genre_ids || [],
+  });
+
+  const handleToggle = () => toggleWatched(enrichedItem());
+  const handleToggleWatchlist = () => toggleWatchlist(enrichedItem());
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -108,20 +113,28 @@ export default function DetailModal({ item, onClose }) {
 
             {/* Actions */}
             <div className="modal-actions">
-              <button
-                className={`btn ${watched ? 'btn-danger' : 'btn-primary'}`}
-                onClick={handleToggle}
-              >
-                {watched ? (
-                  <>
-                    <BookmarkCheck size={18} /> Rimuovi dalla lista
-                  </>
-                ) : (
-                  <>
+              {watched ? (
+                <button className="btn btn-danger" onClick={handleToggle}>
+                  <BookmarkCheck size={18} /> Rimuovi dai visti
+                </button>
+              ) : (
+                <>
+                  <button className="btn btn-primary" onClick={handleToggle}>
                     <BookmarkPlus size={18} /> Ho visto questo
-                  </>
-                )}
-              </button>
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleToggleWatchlist}>
+                    {inWatchlist ? (
+                      <>
+                        <BookmarkCheck size={18} /> Rimuovi da “Da vedere”
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark size={18} /> Da vedere
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
 
               <a
                 href={`https://www.themoviedb.org/${mediaType}/${tmdbId}`}
@@ -149,6 +162,16 @@ export default function DetailModal({ item, onClose }) {
                   onChange={(r) => updateRating(tmdbId, mediaType, r)}
                 />
               </div>
+            )}
+
+            {/* Episodi (serie TV e anime) */}
+            {mediaType === 'tv' && details && (
+              <EpisodeTracker
+                tmdbId={tmdbId}
+                seasons={details.seasons}
+                watched={watched}
+                onMarkSeriesWatched={handleToggle}
+              />
             )}
           </div>
         )}

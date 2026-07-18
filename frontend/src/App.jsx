@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, BookmarkCheck, Sparkles, TrendingUp, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, LogOut } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
 import DiscoverPage from './pages/DiscoverPage';
 import WatchedPage from './pages/WatchedPage';
+import WatchlistPage from './pages/WatchlistPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -47,23 +48,32 @@ export default function App() {
 function AuthenticatedApp() {
   const { user, logout } = useAuth();
   const [watchedMap, setWatchedMap] = useState({}); // key: `${tmdb_id}-${media_type}`
+  const [watchlistMap, setWatchlistMap] = useState({}); // "Da vedere", stessa chiave
   const [selectedItem, setSelectedItem] = useState(null);
   const [toasts, setToasts] = useState([]);
 
-  // Load watched list on mount
+  // Load both lists on mount. Un titolo sta in una sola delle due (lo garantisce il
+  // vincolo UNIQUE lato DB), quindi le due mappe non si sovrappongono mai.
   useEffect(() => {
-    api.getWatched().then((items) => {
+    const toMap = (items) => {
       const map = {};
       items.forEach((it) => {
         map[`${it.tmdb_id}-${it.media_type}`] = it;
       });
-      setWatchedMap(map);
-    }).catch(() => {});
+      return map;
+    };
+    api.getWatched().then((items) => setWatchedMap(toMap(items))).catch(() => {});
+    api.getWatchlist().then((items) => setWatchlistMap(toMap(items))).catch(() => {});
   }, []);
 
   const isWatched = useCallback(
     (tmdbId, mediaType) => !!watchedMap[`${tmdbId}-${mediaType}`],
     [watchedMap]
+  );
+
+  const isInWatchlist = useCallback(
+    (tmdbId, mediaType) => !!watchlistMap[`${tmdbId}-${mediaType}`],
+    [watchlistMap]
   );
 
   const addToast = useCallback((message, type = 'success') => {
@@ -102,10 +112,19 @@ function AuthenticatedApp() {
         release_date: item.release_date || item.first_air_date || null,
         rating: null,
       };
+      const wasInWatchlist = !!watchlistMap[key];
       try {
         await api.addWatched(payload);
         setWatchedMap((prev) => ({ ...prev, [key]: payload }));
-        addToast('Aggiunto alla lista ✓');
+        // Se era tra i "da vedere", il backend l'ha spostato: togliamolo di lì anche qui.
+        if (wasInWatchlist) {
+          setWatchlistMap((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
+        }
+        addToast(wasInWatchlist ? 'Segnato come visto ✓' : 'Aggiunto ai visti ✓');
       } catch (e) {
         if (e.message.includes('409') || e.message.includes('Già')) {
           addToast('Già nella lista', 'error');
@@ -114,7 +133,52 @@ function AuthenticatedApp() {
         }
       }
     }
-  }, [watchedMap, addToast]);
+  }, [watchedMap, watchlistMap, addToast]);
+
+  const toggleWatchlist = useCallback(async (item) => {
+    const key = `${item.tmdb_id || item.id}-${item.media_type}`;
+    const tmdbId = item.tmdb_id || item.id;
+
+    if (watchlistMap[key]) {
+      try {
+        await api.removeWatchlist(tmdbId, item.media_type);
+        setWatchlistMap((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        addToast('Rimosso da "Da vedere"');
+      } catch {
+        addToast('Errore nella rimozione', 'error');
+      }
+    } else {
+      const payload = {
+        tmdb_id: tmdbId,
+        media_type: item.media_type,
+        title: item.title || item.name || '',
+        poster_path: item.poster_path || null,
+        vote_average: item.vote_average || null,
+        overview: item.overview || null,
+        genre_ids: JSON.stringify(item.genre_ids || []),
+        release_date: item.release_date || item.first_air_date || null,
+        rating: null,
+      };
+      try {
+        await api.addWatchlist(payload);
+        setWatchlistMap((prev) => ({ ...prev, [key]: payload }));
+        addToast('Aggiunto a "Da vedere" ✓');
+      } catch (e) {
+        // Il backend rifiuta con 409 se il titolo è già nei visti.
+        if (e.message.includes('visti')) {
+          addToast('È già nei tuoi visti', 'error');
+        } else if (e.message.includes('409') || e.message.includes('Già')) {
+          addToast('Già in "Da vedere"', 'error');
+        } else {
+          addToast('Errore', 'error');
+        }
+      }
+    }
+  }, [watchlistMap, addToast]);
 
   const updateRating = useCallback(async (tmdbId, mediaType, rating) => {
     try {
@@ -131,8 +195,11 @@ function AuthenticatedApp() {
 
   const ctx = {
     watchedMap,
+    watchlistMap,
     isWatched,
+    isInWatchlist,
     toggleWatched,
+    toggleWatchlist,
     updateRating,
     setSelectedItem,
     addToast,
@@ -142,6 +209,7 @@ function AuthenticatedApp() {
     { to: '/', icon: TrendingUp, label: 'Scopri' },
     { to: '/search', icon: Search, label: 'Cerca' },
     { to: '/watched', icon: BookmarkCheck, label: 'Visti' },
+    { to: '/watchlist', icon: Bookmark, label: 'Da vedere' },
     { to: '/recommendations', icon: Sparkles, label: 'Per te' },
   ];
 
@@ -186,6 +254,7 @@ function AuthenticatedApp() {
             <Route path="/" element={<DiscoverPage />} />
             <Route path="/search" element={<DiscoverPage searchMode />} />
             <Route path="/watched" element={<WatchedPage />} />
+            <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
             {/* Già autenticati: /login e /register non hanno più senso */}
             <Route path="*" element={<Navigate to="/" replace />} />

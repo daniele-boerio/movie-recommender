@@ -78,6 +78,9 @@ export const api = {
   details: (mediaType, id) =>
     request(`/details/${mediaType}/${id}`),
 
+  tvSeason: (tmdbId, seasonNumber) =>
+    request(`/tv/${tmdbId}/season/${seasonNumber}`),
+
   genres: (mediaType) =>
     request(`/genres/${mediaType}`),
 
@@ -101,6 +104,38 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ rating }),
     }),
+
+  // Watchlist "Da vedere" (stessa forma degli item di /watched)
+  getWatchlist: () =>
+    request('/watchlist'),
+
+  addWatchlist: (item) =>
+    request('/watchlist', { method: 'POST', body: JSON.stringify(item) }),
+
+  removeWatchlist: (tmdbId, mediaType) =>
+    request(`/watchlist/${tmdbId}/${mediaType}`, { method: 'DELETE' }),
+
+  // Progresso episodi (serie TV / anime)
+  getProgress: (tmdbId) =>
+    request(`/progress/${tmdbId}`),
+
+  markEpisode: (tmdbId, seasonNumber, episodeNumber) =>
+    request(`/progress/${tmdbId}/episode`, {
+      method: 'POST',
+      body: JSON.stringify({ season_number: seasonNumber, episode_number: episodeNumber }),
+    }),
+
+  unmarkEpisode: (tmdbId, seasonNumber, episodeNumber) =>
+    request(`/progress/${tmdbId}/episode/${seasonNumber}/${episodeNumber}`, { method: 'DELETE' }),
+
+  markSeason: (tmdbId, seasonNumber, episodeNumbers) =>
+    request(`/progress/${tmdbId}/season/${seasonNumber}`, {
+      method: 'POST',
+      body: JSON.stringify({ episode_numbers: episodeNumbers }),
+    }),
+
+  unmarkSeason: (tmdbId, seasonNumber) =>
+    request(`/progress/${tmdbId}/season/${seasonNumber}`, { method: 'DELETE' }),
 
   // Recommendations
   getRecommendations: (limit = 20) =>

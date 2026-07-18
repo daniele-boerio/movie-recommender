@@ -38,13 +38,25 @@ export default function DiscoverPage({ searchMode = false }) {
     return () => clearTimeout(searchTimeout.current);
   }, [query, mediaFilter]);
 
+  // Anime = serie TV con genere Animazione (16) e lingua originale giapponese.
+  // TMDB non li classifica a parte, quindi li ricaviamo così.
+  const isAnime = (it) =>
+    (it.genre_ids || []).includes(16) && it.original_language === 'ja';
+
   async function loadTrending() {
     setLoading(true);
     try {
-      const data = await api.trending(
-        mediaFilter === 'all' ? 'all' : mediaFilter,
-        1
-      );
+      let data;
+      if (mediaFilter === 'anime') {
+        data = await api.discover('tv', {
+          with_genres: 16,
+          with_original_language: 'ja',
+          sort_by: 'popularity.desc',
+          page: 1,
+        });
+      } else {
+        data = await api.trending(mediaFilter === 'all' ? 'all' : mediaFilter, 1);
+      }
       setResults(data.results || []);
       setTotalPages(data.total_pages || 1);
       setPage(1);
@@ -58,11 +70,15 @@ export default function DiscoverPage({ searchMode = false }) {
   async function doSearch(q, p = 1) {
     setLoading(true);
     try {
-      const data = await api.search(
-        q,
-        mediaFilter === 'all' ? 'multi' : mediaFilter,
-        p
-      );
+      let data;
+      if (mediaFilter === 'anime') {
+        // La ricerca TMDB non filtra gli anime: cerchiamo tra le serie e teniamo
+        // solo quelle che rispondono all'euristica anime.
+        data = await api.search(q, 'tv', p);
+        data = { ...data, results: (data.results || []).filter(isAnime) };
+      } else {
+        data = await api.search(q, mediaFilter === 'all' ? 'multi' : mediaFilter, p);
+      }
       setResults(data.results || []);
       setTotalPages(data.total_pages || 1);
       setPage(p);
@@ -112,6 +128,7 @@ export default function DiscoverPage({ searchMode = false }) {
           { key: 'all', label: 'Tutti' },
           { key: 'movie', label: 'Film' },
           { key: 'tv', label: 'Serie TV' },
+          { key: 'anime', label: 'Anime' },
         ].map((tab) => (
           <button
             key={tab.key}

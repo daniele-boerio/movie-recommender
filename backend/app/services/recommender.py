@@ -7,7 +7,11 @@ from ..models import Watched
 from ..tmdb import tmdb_get
 
 
-async def build_recommendations(watched_rows: list[Watched], limit: int) -> dict:
+async def build_recommendations(
+    watched_rows: list[Watched],
+    limit: int,
+    exclude: set[tuple] | None = None,
+) -> dict:
     """
     1. Per ogni titolo visto, chiede a TMDB "recommendations" e "similar"
     2. Assegna a ogni candidato uno score dato da:
@@ -15,7 +19,7 @@ async def build_recommendations(watched_rows: list[Watched], limit: int) -> dict
        - sovrapposizione coi generi preferiti dell'utente
        - voto medio TMDB
        - voto personale del titolo che l'ha generato
-    3. Esclude quelli già visti
+    3. Esclude quelli già in lista (`exclude`: visti + watchlist; default = i soli visti)
     4. Restituisce i primi N
     """
     if not watched_rows:
@@ -24,7 +28,9 @@ async def build_recommendations(watched_rows: list[Watched], limit: int) -> dict
             "message": "Aggiungi film/serie alla tua lista per ricevere consigli!",
         }
 
-    watched_set = {(r.tmdb_id, r.media_type) for r in watched_rows}
+    watched_set = (
+        exclude if exclude is not None else {(r.tmdb_id, r.media_type) for r in watched_rows}
+    )
 
     # Profilo dei generi, pesato sul voto personale
     genre_counter: Counter = Counter()

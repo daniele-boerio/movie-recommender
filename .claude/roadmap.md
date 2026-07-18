@@ -4,33 +4,30 @@ Priorità e dettagli implementativi per le feature in programma. Quando l'utente
 
 ---
 
-## 1. Watchlist "Da vedere"
+## 1. Watchlist "Da vedere" — ✅ FATTO (18/07/2026)
 
-Aggiungere una lista separata per i titoli che l'utente vuole guardare in futuro, distinta dalla lista "Visti".
+Implementata. Com'è andata e dove differisce da questo piano:
 
-**Database:**
-```sql
-ALTER TABLE watched ADD COLUMN status TEXT NOT NULL DEFAULT 'watched'
-  CHECK(status IN ('watched', 'watchlist'));
-```
-Oppure creare una tabella `watchlist` separata con la stessa struttura di `watched` (più semplice da gestire, nessuna migrazione rischiosa).
+- **Colonna `status` su `watched`**, non una tabella separata. Il piano dava le due opzioni;
+  ho scelto la colonna perché il vincolo `UNIQUE(user_id, tmdb_id, media_type)` già presente
+  garantisce gratis che un titolo stia in **una sola** lista, e lo spostamento
+  "da vedere" → "visto" diventa un semplice `UPDATE status` (stessa riga, stesso `id`).
+  Su Postgres l'`ADD COLUMN ... server_default 'watched'` + `CHECK` è sicuro anche a tabella
+  popolata (la vecchia paura della "migrazione rischiosa" era per SQLite). Migration
+  `c3d9f1a4b2e6`, vincolo `ck_watched_status`.
+- **Niente endpoint `/watchlist/.../watched` dedicato allo spostamento.** È `POST /api/watched`
+  a fare da upsert: se il titolo è già in watchlist ne cambia lo `status` (e aggiorna
+  `added_at`), altrimenti inserisce. Un solo modo per "diventare visto" = frontend più semplice.
+  Endpoint effettivi: `GET/POST /api/watchlist`, `DELETE /api/watchlist/{tmdb_id}/{media_type}`.
+- **Raccomandazioni:** i seed restano i soli `status='watched'` (la watchlist non dice nulla
+  sui gusti, non l'ho ancora vista); l'esclusione invece copre **entrambe** le liste, così un
+  titolo già in watchlist non ricompare tra i consigli. `build_recommendations(..., exclude=...)`.
+- **Frontend:** `WatchlistPage.jsx` (gemella di `WatchedPage`, senza il voto), badge segnalibro
+  in `MediaCard`, secondo bottone "Da vedere" in `DetailModal`, voce sidebar con icona `Bookmark`,
+  `AppContext` esteso con `watchlistMap` / `isInWatchlist()` / `toggleWatchlist()`.
 
-**Backend:**
-- `GET /api/watchlist` — lista dei "da vedere"
-- `POST /api/watchlist` — aggiungi alla watchlist
-- `DELETE /api/watchlist/{tmdb_id}/{media_type}` — rimuovi
-- `POST /api/watchlist/{tmdb_id}/{media_type}/watched` — sposta da watchlist a visti (cancella da watchlist + inserisci in watched)
-
-**Frontend:**
-- Nuova pagina `WatchlistPage.jsx` con la stessa struttura di `WatchedPage`
-- Nel `DetailModal`, aggiungere un secondo bottone "Da vedere" accanto a "Ho visto questo"
-- Nel `MediaCard`, badge diverso per watchlist (es. icona bookmark outline vs check)
-- Nuova voce nella sidebar con icona `Bookmark` da lucide-react
-- Aggiornare `AppContext` con `watchlistMap`, `isInWatchlist()`, `toggleWatchlist()`
-
-**Logica raccomandazioni:**
-- I titoli nella watchlist NON devono apparire nei consigli (già "salvati")
-- Opzionale: nella pagina "Per te", evidenziare i risultati che sono già nella watchlist
+**Nota per il futuro:** `_serialize` della lista visti è riusata dal router watchlist
+(`from .watched import _serialize`) — le due liste hanno la stessa forma JSON di proposito.
 
 ---
 

@@ -1,4 +1,11 @@
-"""CRUD della lista "Visti". Ogni riga appartiene a un utente."""
+"""CRUD della lista "Visti". Ogni riga appartiene a un utente.
+
+`watched` è condivisa con la watchlist "Da vedere" (vedi routers/watchlist.py): le due
+liste sono la stessa tabella distinta dalla colonna `status`. Qui si lavora solo sulle
+righe `status == 'watched'`.
+"""
+
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -19,6 +26,7 @@ def _serialize(w: Watched) -> dict:
         "id": w.id,
         "tmdb_id": w.tmdb_id,
         "media_type": w.media_type,
+        "status": w.status,
         "title": w.title,
         "poster_path": w.poster_path,
         "vote_average": w.vote_average,
@@ -35,10 +43,10 @@ async def get_watched(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """La lista dell'utente corrente, dalla più recente."""
+    """La lista "Visti" dell'utente corrente, dalla più recente."""
     rows = (
         db.query(Watched)
-        .filter(Watched.user_id == user_id)
+        .filter(Watched.user_id == user_id, Watched.status == "watched")
         .order_by(Watched.added_at.desc())
         .all()
     )
@@ -51,11 +59,33 @@ async def add_watched(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Aggiunge un titolo alla lista dell'utente corrente."""
-    db.add(Watched(user_id=user_id, **item.model_dump()))
+    """Segna un titolo come visto.
+
+    Se era nella watchlist "Da vedere", lo sposta invece di duplicarlo: il vincolo
+    UNIQUE(user_id, tmdb_id, media_type) vieta comunque due righe per lo stesso titolo.
+    """
+    existing = (
+        db.query(Watched)
+        .filter(
+            Watched.user_id == user_id,
+            Watched.tmdb_id == item.tmdb_id,
+            Watched.media_type == item.media_type,
+        )
+        .first()
+    )
+    if existing:
+        if existing.status == "watchlist":
+            existing.status = "watched"
+            existing.added_at = datetime.now(timezone.utc)  # risale la lista dei visti
+            db.commit()
+            return {"ok": True, "moved": True}
+        raise HTTPException(409, "Già nella lista")
+
+    db.add(Watched(user_id=user_id, status="watched", **item.model_dump()))
     try:
         db.commit()
     except IntegrityError:
+        # Race con un'altra richiesta in parallelo: il vincolo UNIQUE è l'arbitro finale.
         db.rollback()
         raise HTTPException(409, "Già nella lista")
     return {"ok": True}
@@ -81,6 +111,7 @@ async def update_rating(
             Watched.user_id == user_id,
             Watched.tmdb_id == tmdb_id,
             Watched.media_type == media_type,
+            Watched.status == "watched",  # il voto ha senso solo su un titolo visto
         )
         .update({"rating": body.rating})
     )
@@ -97,13 +128,14 @@ async def remove_watched(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Rimuove un titolo dalla lista dell'utente corrente."""
+    """Rimuove un titolo dalla lista "Visti" dell'utente corrente."""
     deleted = (
         db.query(Watched)
         .filter(
             Watched.user_id == user_id,
             Watched.tmdb_id == tmdb_id,
             Watched.media_type == media_type,
+            Watched.status == "watched",
         )
         .delete()
     )

@@ -1,14 +1,15 @@
-import { Star, Check } from 'lucide-react';
+import { Star, Check, Bookmark, BookmarkCheck } from 'lucide-react';
 import { posterUrl } from '../api';
 import { useApp } from '../App';
 
 export default function MediaCard({ item, showReason }) {
-  const { isWatched, setSelectedItem } = useApp();
+  const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, setSelectedItem } = useApp();
   const title = item.title || item.name || '';
   const date = item.release_date || item.first_air_date || '';
   const year = date ? date.slice(0, 4) : '';
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
   const watched = isWatched(item.tmdb_id || item.id, item.media_type);
+  const inWatchlist = isInWatchlist(item.tmdb_id || item.id, item.media_type);
   const poster = posterUrl(item.poster_path);
 
   return (
@@ -18,11 +19,37 @@ export default function MediaCard({ item, showReason }) {
       role="button"
       tabIndex={0}
     >
-      {watched && (
-        <div className="watched-badge">
-          <Check />
-        </div>
-      )}
+      {/* Azioni rapide: aggiungere ai visti / alla watchlist senza aprire il dettaglio.
+          stopPropagation così il click non fa aprire il modal della card. */}
+      <div className="media-card-actions">
+        <button
+          type="button"
+          className={`media-card-action ${watched ? 'active-watched' : ''}`}
+          title={watched ? 'Rimuovi dai visti' : 'Segna come visto'}
+          aria-label={watched ? 'Rimuovi dai visti' : 'Segna come visto'}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleWatched(item);
+          }}
+        >
+          {/* Icona "Visti" della sidebar per aggiungere; una volta visto resta il check */}
+          {watched ? <Check /> : <BookmarkCheck />}
+        </button>
+        {!watched && (
+          <button
+            type="button"
+            className={`media-card-action ${inWatchlist ? 'active-watchlist' : ''}`}
+            title={inWatchlist ? 'Rimuovi da “Da vedere”' : 'Aggiungi a “Da vedere”'}
+            aria-label={inWatchlist ? 'Rimuovi da Da vedere' : 'Aggiungi a Da vedere'}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleWatchlist(item);
+            }}
+          >
+            <Bookmark />
+          </button>
+        )}
+      </div>
       {poster ? (
         <img
           className="media-card-poster"

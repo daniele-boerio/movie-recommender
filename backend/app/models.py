@@ -76,6 +76,12 @@ class Watched(Base):
     )
     tmdb_id = Column(Integer, nullable=False)
     media_type = Column(String, nullable=False)
+    # 'watched' = già visto · 'watchlist' = da vedere. Lo stesso titolo non può stare
+    # in entrambe le liste: il vincolo UNIQUE(user_id, tmdb_id, media_type) lo impedisce,
+    # quindi spostare un titolo da "da vedere" a "visti" è un semplice UPDATE di status.
+    status = Column(
+        String, nullable=False, default="watched", server_default="watched"
+    )
     title = Column(String, nullable=False)
     poster_path = Column(String)
     vote_average = Column(Float)
@@ -93,4 +99,38 @@ class Watched(Base):
             "user_id", "tmdb_id", "media_type", name="uq_watched_user_tmdb_media"
         ),
         CheckConstraint("media_type IN ('movie','tv')", name="ck_watched_media_type"),
+        CheckConstraint(
+            "status IN ('watched','watchlist')", name="ck_watched_status"
+        ),
+    )
+
+
+class EpisodeProgress(Base):
+    """Un singolo episodio visto da un utente per una serie TV (o anime).
+
+    Granularità per-episodio: una riga = un episodio guardato. Slegato da `watched`,
+    così si può seguire una serie episodio per episodio senza per forza segnarla "vista".
+    `tmdb_id` è l'id della serie; gli episodi esistono solo per il media_type 'tv'.
+    """
+
+    __tablename__ = "episode_progress"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tmdb_id = Column(Integer, nullable=False)
+    season_number = Column(Integer, nullable=False)
+    episode_number = Column(Integer, nullable=False)
+    watched_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        # Un episodio o è visto o non lo è: niente doppioni per lo stesso utente/serie.
+        UniqueConstraint(
+            "user_id",
+            "tmdb_id",
+            "season_number",
+            "episode_number",
+            name="uq_episode_progress",
+        ),
     )

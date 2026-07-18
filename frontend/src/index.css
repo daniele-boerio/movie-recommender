@@ -326,25 +326,243 @@ select {
   color: var(--accent);
 }
 
-/* Watched badge on card */
-.media-card .watched-badge {
+/* Azioni rapide sulla card: segna "visto" / "da vedere" senza aprire il dettaglio.
+   Lo stato attivo (colorato) fa anche da indicatore a colpo d'occhio. */
+.media-card-actions {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--success);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 6px;
   z-index: 2;
 }
 
-.media-card .watched-badge svg {
+.media-card-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: transform var(--transition), background var(--transition),
+    color var(--transition), opacity var(--transition);
+}
+
+.media-card-action:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.media-card-action svg {
   width: 16px;
   height: 16px;
+}
+
+.media-card-action.active-watched {
+  background: var(--success);
   color: #000;
+  border-color: transparent;
+  opacity: 1;
+}
+
+.media-card-action.active-watchlist {
+  background: var(--accent);
+  color: #000;
+  border-color: transparent;
+  opacity: 1;
+}
+
+/* ── Episode tracker (dentro il DetailModal) ── */
+.ep-tracker {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.ep-tracker-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ep-tracker-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ep-progress-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.ep-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width var(--transition);
+}
+
+.ep-complete-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.ep-seasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ep-season {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.ep-season-head {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-card);
+}
+
+.ep-season-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.ep-season-toggle:hover {
+  background: var(--bg-card-hover);
+}
+
+.ep-season-name {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ep-season-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-season-count.done {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.ep-season-mark {
+  padding: 0 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ep-season-mark:hover {
+  background: var(--accent-soft);
+}
+
+.ep-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.ep-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.ep-row:last-child {
+  border-bottom: none;
+}
+
+.ep-row:hover {
+  background: var(--bg-card);
+}
+
+.ep-row.on {
+  color: var(--text-primary);
+}
+
+.ep-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+}
+
+.ep-row.on .ep-check {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.ep-num {
+  width: 24px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ep-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ep-loading {
+  padding: 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* ── Detail Modal ── */

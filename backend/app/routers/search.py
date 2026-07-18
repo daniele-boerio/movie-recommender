@@ -54,6 +54,12 @@ async def details(media_type: str, tmdb_id: int):
     return data
 
 
+@router.get("/tv/{tmdb_id}/season/{season_number}")
+async def tv_season(tmdb_id: int, season_number: int):
+    """Episodi di una stagione (per il tracking episodio-per-episodio)."""
+    return await tmdb_get(f"/tv/{tmdb_id}/season/{season_number}")
+
+
 @router.get("/genres/{media_type}")
 async def genres(media_type: str):
     """Elenco generi (usato dai filtri)."""
@@ -64,13 +70,20 @@ async def genres(media_type: str):
 async def discover(
     media_type: str,
     with_genres: str | None = None,
+    with_original_language: str | None = None,
     sort_by: str = "popularity.desc",
     page: int = 1,
 ):
-    """Scopri film/serie per genere, ordinamento, ecc."""
+    """Scopri film/serie per genere, lingua originale, ordinamento, ecc.
+
+    La lingua originale serve per gli anime: TMDB non li classifica a parte, sono serie
+    con genere Animazione (16) e `with_original_language=ja`.
+    """
     params = {"sort_by": sort_by, "page": page}
     if with_genres:
         params["with_genres"] = with_genres
+    if with_original_language:
+        params["with_original_language"] = with_original_language
     data = await tmdb_get(f"/discover/{media_type}", params)
     for r in data.get("results", []):
         r["media_type"] = media_type
