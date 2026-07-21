@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Bookmark, BookmarkPlus, BookmarkCheck, Star, ExternalLink } from 'lucide-react';
+import { X, Bookmark, BookmarkPlus, BookmarkCheck, Star, ExternalLink, Play, Tv } from 'lucide-react';
 import { api, posterUrl, backdropUrl } from '../api';
 import { useApp } from '../App';
 import StarRating from './StarRating';
@@ -9,6 +9,7 @@ export default function DetailModal({ item, onClose }) {
   const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, watchedMap, updateRating } = useApp();
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showTrailer, setShowTrailer] = useState(false);
 
   const tmdbId = item.tmdb_id || item.id;
   const mediaType = item.media_type;
@@ -19,6 +20,7 @@ export default function DetailModal({ item, onClose }) {
 
   useEffect(() => {
     setLoading(true);
+    setShowTrailer(false);
     api.details(mediaType, tmdbId)
       .then(setDetails)
       .catch(() => {})
@@ -42,6 +44,18 @@ export default function DetailModal({ item, onClose }) {
   const genres = details?.genres || [];
   const vote = details?.vote_average;
   const cast = details?.credits?.cast?.slice(0, 6) || [];
+
+  // Trailer: preferiamo un trailer YouTube ufficiale, poi uno qualsiasi, poi un video.
+  const videos = details?.videos?.results || [];
+  const trailer =
+    videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer' && v.official) ||
+    videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer') ||
+    videos.find((v) => v.site === 'YouTube');
+
+  // "Dove guardarlo": disponibilità italiana. flatrate = incluso nell'abbonamento.
+  const providersIT = details?.['watch/providers']?.results?.IT;
+  const flatrate = providersIT?.flatrate || [];
+  const justwatchLink = providersIT?.link;
 
   // Stesso item arricchito per entrambe le azioni: al momento del click abbiamo i
   // dettagli TMDB (generi in chiaro), che l'item della card magari non aveva.
@@ -111,6 +125,48 @@ export default function DetailModal({ item, onClose }) {
               </p>
             )}
 
+            {/* Dove guardarlo (streaming in Italia) */}
+            {flatrate.length > 0 && (
+              <div className="watch-providers">
+                <div className="watch-providers-head">
+                  <Tv size={15} /> Dove guardarlo
+                </div>
+                <div className="watch-providers-logos">
+                  {flatrate.map((p) => (
+                    <img
+                      key={p.provider_id}
+                      className="provider-logo"
+                      src={posterUrl(p.logo_path, 'w92')}
+                      alt={p.provider_name}
+                      title={p.provider_name}
+                    />
+                  ))}
+                </div>
+                {justwatchLink && (
+                  <a
+                    className="watch-providers-src"
+                    href={justwatchLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Dati JustWatch
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Trailer (embed YouTube on demand) */}
+            {trailer && showTrailer && (
+              <div className="trailer-embed">
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${trailer.key}`}
+                  title="Trailer"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+
             {/* Actions */}
             <div className="modal-actions">
               {watched ? (
@@ -134,6 +190,15 @@ export default function DetailModal({ item, onClose }) {
                     )}
                   </button>
                 </>
+              )}
+
+              {trailer && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowTrailer((s) => !s)}
+                >
+                  <Play size={16} /> {showTrailer ? 'Nascondi trailer' : 'Trailer'}
+                </button>
               )}
 
               <a

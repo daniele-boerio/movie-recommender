@@ -45,10 +45,14 @@ async def trending(
 
 @router.get("/details/{media_type}/{tmdb_id}")
 async def details(media_type: str, tmdb_id: int):
-    """Dettaglio completo, con cast e simili."""
+    """Dettaglio completo, con cast, simili, video e provider di streaming.
+
+    `watch/providers` arriva con la chiave che contiene la barra (è il nome TMDB): il
+    frontend legge `data['watch/providers'].results.IT` per la disponibilità in Italia.
+    """
     data = await tmdb_get(
         f"/{media_type}/{tmdb_id}",
-        {"append_to_response": "credits,similar,recommendations,videos"},
+        {"append_to_response": "credits,similar,recommendations,videos,watch/providers"},
     )
     data["media_type"] = media_type
     return data

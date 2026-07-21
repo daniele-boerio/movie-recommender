@@ -70,6 +70,20 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
+class PasswordResetRequest(BaseModel):
+    """Passo 1: chiedo un codice per reimpostare la password dimenticata."""
+
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Passo 2: codice ricevuto via email + nuova password."""
+
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+
 # --- Progresso episodi ---
 
 class EpisodeRef(BaseModel):

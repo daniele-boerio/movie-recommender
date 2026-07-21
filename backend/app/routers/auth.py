@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from .. import auth
 from ..config import CODE_EXPIRE_MINUTES, CODE_MAX_ATTEMPTS
 from ..database import get_db
-from ..emailer import send_email_change_email, send_verification_email
+from ..emailer import (
+    send_email_change_email,
+    send_password_reset_email,
+    send_verification_email,
+)
 from ..models import EmailVerification, RefreshToken, User
 from ..rate_limit import limiter
 from ..schemas import (
@@ -19,6 +23,8 @@ from ..schemas import (
     ChangePasswordRequest,
     DeleteAccountRequest,
     LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RegisterComplete,
     RegisterRequest,
     UserResponse,
@@ -188,6 +194,98 @@ def login(
 
     _issue_session(db, user, request, response)
     return user
+
+
+@router.post("/password-reset/request")
+@limiter.limit("3/hour")
+def password_reset_request(
+    request: Request,
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Passo 1: spedisce un codice per reimpostare la password.
+
+    Risposta identica che l'email esista o no: come per la registrazione, questo
+    endpoint non deve rivelare quali indirizzi hanno un account.
+    """
+    email = payload.email.lower()
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        db.query(EmailVerification).filter(
+            EmailVerification.email == email,
+            EmailVerification.consumed_at.is_(None),
+        ).update({"consumed_at": datetime.now(timezone.utc)})
+
+        code = auth.generate_code()
+        db.add(
+            EmailVerification(
+                email=email,
+                code_hash=auth.hash_code(code),
+                expires_at=datetime.now(timezone.utc)
+                + timedelta(minutes=CODE_EXPIRE_MINUTES),
+            )
+        )
+        db.commit()
+        background_tasks.add_task(send_password_reset_email, email, code)
+
+    return {
+        "message": "Se l'indirizzo è valido, riceverai un codice via email.",
+        "expires_in_minutes": CODE_EXPIRE_MINUTES,
+    }
+
+
+@router.post("/password-reset/confirm")
+@limiter.limit("10/hour")
+def password_reset_confirm(
+    request: Request,
+    payload: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    """Passo 2: valida il codice e imposta la nuova password.
+
+    Reimpostare la password sloggia ovunque (bump token_version + revoca dei refresh):
+    se la richiesta parte perché qualcuno ha perso l'accesso, non vogliamo lasciare vive
+    eventuali sessioni dell'attaccante."""
+    email = payload.email.lower()
+    verification = (
+        db.query(EmailVerification)
+        .filter(
+            EmailVerification.email == email,
+            EmailVerification.consumed_at.is_(None),
+        )
+        .order_by(EmailVerification.created_at.desc())
+        .first()
+    )
+
+    if not verification:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+    if verification.attempts >= CODE_MAX_ATTEMPTS:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Troppi tentativi. Richiedi un nuovo codice.",
+        )
+    if auth._as_utc(verification.expires_at) < datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+    if not auth.verify_code(payload.code, verification.code_hash):
+        verification.attempts += 1
+        db.commit()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        # L'email aveva un codice ma non un utente: non dovrebbe capitare, ma non
+        # diamo appigli. Bruciamo il codice e rispondiamo col messaggio neutro.
+        verification.consumed_at = datetime.now(timezone.utc)
+        db.commit()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+
+    verification.consumed_at = datetime.now(timezone.utc)
+    user.password_hash = auth.get_password_hash(payload.new_password)
+    user.token_version += 1
+    auth.revoke_all_sessions(db, user.id)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/refresh")

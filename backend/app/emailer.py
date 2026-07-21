@@ -60,6 +60,19 @@ def send_verification_email(email_to: str, code: str) -> None:
     )
 
 
+def send_password_reset_email(email_to: str, code: str) -> None:
+    _deliver(
+        email_to,
+        "Reimposta la tua password WatchNext",
+        f"Ciao,\n\n"
+        f"Hai chiesto di reimpostare la password del tuo account WatchNext.\n"
+        f"Il codice per procedere è:\n\n"
+        f"    {code}\n\n"
+        f"Scade tra {CODE_EXPIRE_MINUTES} minuti.\n\n"
+        f"Se non sei stato tu, ignora questa email: la password resta quella di prima.",
+    )
+
+
 def send_email_change_email(email_to: str, code: str) -> None:
     _deliver(
         email_to,

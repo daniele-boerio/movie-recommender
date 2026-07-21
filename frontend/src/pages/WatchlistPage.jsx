@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Bookmark, Search } from 'lucide-react';
+import { Bookmark, Search, Shuffle } from 'lucide-react';
 import { useApp } from '../App';
 import MediaCard from '../components/MediaCard';
 
 export default function WatchlistPage() {
-  const { watchlistMap } = useApp();
+  const { watchlistMap, setSelectedItem } = useApp();
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('added'); // added | title
   const [searchQ, setSearchQ] = useState('');
@@ -32,13 +32,28 @@ export default function WatchlistPage() {
   const totalMovies = Object.values(watchlistMap).filter((it) => it.media_type === 'movie').length;
   const totalTv = Object.values(watchlistMap).filter((it) => it.media_type === 'tv').length;
 
+  // Pesca a caso tra i titoli visibili (rispetta filtri e ricerca) e apre il dettaglio.
+  const surpriseMe = () => {
+    const pool = items.length ? items : Object.values(watchlistMap);
+    if (!pool.length) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    setSelectedItem({ ...pick, id: pick.tmdb_id });
+  };
+
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Da vedere</h1>
-        <p className="page-subtitle">
-          {totalMovies} film · {totalTv} serie TV
-        </p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 className="page-title">Da vedere</h1>
+          <p className="page-subtitle">
+            {totalMovies} film · {totalTv} serie TV
+          </p>
+        </div>
+        {Object.keys(watchlistMap).length > 0 && (
+          <button className="btn btn-primary" onClick={surpriseMe}>
+            <Shuffle size={15} /> Sorprendimi
+          </button>
+        )}
       </div>
 
       {Object.keys(watchlistMap).length === 0 ? (

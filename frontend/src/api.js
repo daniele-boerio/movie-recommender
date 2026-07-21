@@ -15,6 +15,8 @@ const NO_REFRESH_RETRY = [
   '/auth/logout',
   '/auth/register',
   '/auth/register/request',
+  '/auth/password-reset/request',
+  '/auth/password-reset/confirm',
 ];
 
 async function request(path, options = {}, allowRefresh = true) {
@@ -92,6 +94,19 @@ export const api = {
     }),
 
   logout: () => request('/auth/logout', { method: 'POST' }),
+
+  // Recupero password (utente non loggato)
+  requestPasswordReset: (email) =>
+    request('/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  confirmPasswordReset: (email, code, new_password) =>
+    request('/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, new_password }),
+    }),
 
   me: () => request('/auth/me'),
 
