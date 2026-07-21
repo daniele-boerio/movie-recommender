@@ -7,8 +7,12 @@ import MediaCard from '../components/MediaCard';
 export default function WatchedPage() {
   const { watchedMap } = useApp();
   const [filter, setFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('added'); // added | rating | title
+  const [sortBy, setSortBy] = useState('watched'); // watched | added | rating | title
   const [searchQ, setSearchQ] = useState('');
+
+  // Chiave "data di visione": la data dichiarata dall'utente, o in mancanza il momento
+  // in cui ha premuto "visto" (added_at). Stringhe ISO → confronto lessicale = cronologico.
+  const watchKey = (it) => it.watched_on || it.added_at || '';
 
   const items = useMemo(() => {
     let list = Object.values(watchedMap);
@@ -25,12 +29,14 @@ export default function WatchedPage() {
     }
 
     // Sort
-    if (sortBy === 'rating') {
-      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    if (sortBy === 'watched') {
+      list = [...list].sort((a, b) => watchKey(b).localeCompare(watchKey(a)));
+    } else if (sortBy === 'rating') {
+      list = [...list].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else if (sortBy === 'title') {
-      list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     }
-    // "added" → default order from watchedMap (desc by added_at)
+    // "added" → ordine di default della mappa (desc per added_at)
 
     return list;
   }, [watchedMap, filter, sortBy, searchQ]);
@@ -103,6 +109,7 @@ export default function WatchedPage() {
                 fontSize: '0.85rem',
               }}
             >
+              <option value="watched">Data di visione</option>
               <option value="added">Ultimi aggiunti</option>
               <option value="rating">Mio voto</option>
               <option value="title">Titolo A-Z</option>

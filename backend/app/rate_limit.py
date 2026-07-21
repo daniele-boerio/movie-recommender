@@ -10,4 +10,7 @@ L'IP del client arriva corretto perché uvicorn gira con --proxy-headers dietro 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-limiter = Limiter(key_func=get_remote_address)
+# default_limits: rete di sicurezza su TUTTI gli endpoint (via SlowAPIMiddleware in
+# main.py), oltre ai limiti più stretti messi a mano su login/registrazione. Generoso,
+# così l'uso normale non lo tocca ma uno script che martella l'API viene fermato.
+limiter = Limiter(key_func=get_remote_address, default_limits=["300/minute"])

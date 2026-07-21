@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from .config import SCHEDULER_ENABLED
 from .rate_limit import limiter
@@ -36,6 +37,8 @@ app = FastAPI(title="WatchNext API")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Applica i default_limits del limiter a tutte le rotte (i limiti a mano restano in più).
+app.add_middleware(SlowAPIMiddleware)
 
 # Frontend e backend sono same-origin (nginx in prod, il proxy di Vite in dev), quindi
 # i cookie di sessione non dipendono da questo. Niente allow_credentials: una pagina di

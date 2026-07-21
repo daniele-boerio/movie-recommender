@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, Tv } from 'lucide-react';
+import { Bell, Tv, ListChecks } from 'lucide-react';
 import { api, posterUrl } from '../api';
 import { useApp } from '../App';
 
@@ -57,7 +57,9 @@ export default function NotificationsPage() {
               {posterUrl(n.poster_path, 'w92') ? (
                 <img className="notif-poster" src={posterUrl(n.poster_path, 'w92')} alt="" />
               ) : (
-                <div className="notif-poster notif-poster-empty"><Tv size={18} /></div>
+                <div className="notif-poster notif-poster-empty">
+                  {n.type && n.type.startsWith('list') ? <ListChecks size={18} /> : <Tv size={18} />}
+                </div>
               )}
               <div className="notif-info">
                 <div className="notif-title">{n.title}</div>

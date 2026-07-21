@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut, Menu } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -65,6 +65,7 @@ function AuthenticatedApp() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [notifUnread, setNotifUnread] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Contatore notifiche non lette: al mount e poi ogni 2 minuti. La pagina notifiche
   // lo azzera chiamando refreshNotifications dopo aver segnato tutto come letto.
@@ -251,8 +252,26 @@ function AuthenticatedApp() {
   return (
     <AppContext.Provider value={ctx}>
       <div className="app-layout">
-        {/* Sidebar */}
-        <nav className="sidebar">
+        {/* Topbar (solo mobile) */}
+        <header className="topbar">
+          <button className="topbar-burger" onClick={() => setMobileNavOpen(true)} aria-label="Apri menu">
+            <Menu size={22} />
+          </button>
+          <span className="topbar-logo">
+            <Film size={18} style={{ verticalAlign: '-3px', marginRight: 5 }} />
+            WatchNext
+          </span>
+          {notifUnread > 0 && <span className="topbar-notif">{notifUnread > 9 ? '9+' : notifUnread}</span>}
+        </header>
+
+        {/* Backdrop del drawer mobile */}
+        {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+
+        {/* Sidebar / drawer. Su mobile un click su un link la richiude. */}
+        <nav
+          className={`sidebar ${mobileNavOpen ? 'open' : ''}`}
+          onClick={(e) => { if (e.target.closest('a')) setMobileNavOpen(false); }}
+        >
           <div className="sidebar-logo">
             <Film size={20} style={{ display: 'inline', verticalAlign: '-3px', marginRight: 6 }} />
             WatchNext

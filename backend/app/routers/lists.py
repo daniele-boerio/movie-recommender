@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id
 from ..database import get_db
-from ..models import CustomList, ListItem, ListMember, User
+from ..models import CustomList, ListItem, ListMember, Notification, User
 from ..schemas import ListCreate, ListItemAdd, ListRename, MemberAdd
 
 router = APIRouter(prefix="/api/lists", tags=["Lists"])
@@ -169,7 +169,7 @@ def add_item(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    _accessible_list(db, user_id, list_id)  # proprietario o membro
+    lst = _accessible_list(db, user_id, list_id)  # proprietario o membro
     media_type = "tv" if body.media_type == "tv" else "movie"
     db.add(
         ListItem(
@@ -187,6 +187,31 @@ def add_item(
     except IntegrityError:
         db.rollback()
         raise HTTPException(409, "Già nella lista")
+
+    # Se la lista è condivisa, avvisa gli altri partecipanti (non chi ha appena aggiunto).
+    member_ids = [
+        m[0] for m in db.query(ListMember.user_id).filter(ListMember.list_id == list_id).all()
+    ]
+    if member_ids:
+        recipients = (set(member_ids) | {lst.user_id}) - {user_id}
+        if recipients:
+            actor = db.get(User, user_id)
+            ref = f"listitem:{list_id}:{body.tmdb_id}:{media_type}"
+            for rid in recipients:
+                db.add(
+                    Notification(
+                        user_id=rid,
+                        type="list_item",
+                        tmdb_id=body.tmdb_id,
+                        media_type=media_type,
+                        title=body.title,
+                        body=f"{actor.username} ha aggiunto «{body.title}» alla lista «{lst.name}»",
+                        ref=ref,
+                        poster_path=body.poster_path,
+                    )
+                )
+            db.commit()
+
     return {"ok": True}
 
 
@@ -231,8 +256,22 @@ def add_member(
     db.add(ListMember(list_id=list_id, user_id=u.id))
     try:
         db.commit()
+        newly_added = True
     except IntegrityError:
         db.rollback()  # già membro: idempotente
+        newly_added = False
+
+    if newly_added:
+        actor = db.get(User, user_id)
+        db.add(
+            Notification(
+                user_id=u.id,
+                type="list_invite",
+                title=lst.name,
+                body=f"{actor.username} ti ha aggiunto alla lista «{lst.name}»",
+            )
+        )
+        db.commit()
     return {"ok": True}
 
 

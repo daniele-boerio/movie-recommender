@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Search, UserPlus, UserCheck, Star } from 'lucide-react';
+import { Users, Search, UserPlus, UserCheck, Star, Film, Tv } from 'lucide-react';
 import { api, posterUrl } from '../api';
 import { useApp } from '../App';
 
@@ -99,30 +99,34 @@ export default function CommunityPage() {
         <>
           <h2 className="section-title" style={{ marginTop: 32 }}>Attività recente</h2>
           <div className="feed-list">
-            {feed.map((ev, i) => (
-              <button
-                className="feed-row"
-                key={`${ev.username}-${ev.tmdb_id}-${ev.media_type}-${i}`}
-                onClick={() => setSelectedItem({ ...ev, id: ev.tmdb_id })}
-              >
-                {posterUrl(ev.poster_path, 'w92') ? (
-                  <img className="feed-poster" src={posterUrl(ev.poster_path, 'w92')} alt="" />
-                ) : (
-                  <div className="feed-poster feed-poster-empty" />
-                )}
-                <div className="feed-info">
-                  <div className="feed-text">
-                    <strong>{ev.username}</strong> ha visto <strong>{ev.title}</strong>
-                  </div>
-                  <div className="feed-meta">
-                    {ev.rating != null && (
-                      <span className="feed-rating"><Star size={12} fill="currentColor" /> {ev.rating}</span>
-                    )}
-                    <span>{relTime(ev.added_at)}</span>
+            {feed.map((ev, i) => {
+              const openDetail = () => setSelectedItem({ ...ev, id: ev.tmdb_id });
+              return (
+                <div className="feed-row" key={`${ev.username}-${ev.tmdb_id}-${ev.media_type}-${i}`}>
+                  {posterUrl(ev.poster_path, 'w92') ? (
+                    <img className="feed-poster clickable" src={posterUrl(ev.poster_path, 'w92')} alt="" onClick={openDetail} />
+                  ) : (
+                    <div className="feed-poster feed-poster-empty clickable" onClick={openDetail}>
+                      {ev.media_type === 'tv' ? <Tv size={18} /> : <Film size={18} />}
+                    </div>
+                  )}
+                  <div className="feed-info">
+                    <div className="feed-text">
+                      <Link to={`/u/${ev.username}`} className="feed-user">{ev.username}</Link>
+                      {ev.rating != null ? ' ha valutato ' : ' ha visto '}
+                      <button className="feed-title-link" onClick={openDetail}>{ev.title}</button>
+                    </div>
+                    <div className="feed-meta">
+                      {ev.rating != null && (
+                        <span className="feed-rating"><Star size={12} fill="currentColor" /> {ev.rating}/10</span>
+                      )}
+                      <span className="feed-type">{ev.media_type === 'tv' ? 'Serie' : 'Film'}</span>
+                      <span>{relTime(ev.added_at)}</span>
+                    </div>
                   </div>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
