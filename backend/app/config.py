@@ -45,6 +45,11 @@ COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN") or None
 CODE_EXPIRE_MINUTES = 15
 CODE_MAX_ATTEMPTS = 5
 
+# --- Scheduler ---
+# Lo scheduler in-app (notifiche nuovi episodi) parte all'avvio. Si disattiva con
+# SCHEDULER_ENABLED=false (es. nei test, per non chiamare TMDB/DB in background).
+SCHEDULER_ENABLED = os.getenv("SCHEDULER_ENABLED", "true").lower() != "false"
+
 # --- SMTP ---
 # Se non configurato, l'email viene loggata invece che spedita (comodo in sviluppo).
 SMTP_SERVER = os.getenv("SMTP_SERVER")

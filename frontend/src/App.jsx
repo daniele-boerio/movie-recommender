@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Settings, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -17,6 +17,7 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import PersonPage from './pages/PersonPage';
 import CommunityPage from './pages/CommunityPage';
 import UserProfilePage from './pages/UserProfilePage';
+import NotificationsPage from './pages/NotificationsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -63,6 +64,19 @@ function AuthenticatedApp() {
   const [watchlistMap, setWatchlistMap] = useState({}); // "Da vedere", stessa chiave
   const [selectedItem, setSelectedItem] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const [notifUnread, setNotifUnread] = useState(0);
+
+  // Contatore notifiche non lette: al mount e poi ogni 2 minuti. La pagina notifiche
+  // lo azzera chiamando refreshNotifications dopo aver segnato tutto come letto.
+  const refreshNotifications = useCallback(() => {
+    api.getUnreadCount().then((d) => setNotifUnread(d.count)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshNotifications();
+    const t = setInterval(refreshNotifications, 120000);
+    return () => clearInterval(t);
+  }, [refreshNotifications]);
 
   // Ricarica entrambe le liste dal server. Serve al mount e dopo un import massivo.
   // Un titolo sta in una sola delle due (lo garantisce il vincolo UNIQUE lato DB).
@@ -216,6 +230,8 @@ function AuthenticatedApp() {
     toggleWatchlist,
     updateRating,
     reloadLists,
+    notifUnread,
+    refreshNotifications,
     setSelectedItem,
     addToast,
   };
@@ -259,6 +275,12 @@ function AuthenticatedApp() {
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <span className="sidebar-username" title={user.email}>{user.username}</span>
+              <NavLink to="/notifications" className="sidebar-logout sidebar-settings" title="Notifiche">
+                <span className="notif-bell">
+                  <Bell size={15} />
+                  {notifUnread > 0 && <span className="notif-badge">{notifUnread > 9 ? '9+' : notifUnread}</span>}
+                </span>
+              </NavLink>
               <ThemeToggle />
               <NavLink to="/settings" className="sidebar-logout sidebar-settings" title="Impostazioni">
                 <Settings size={15} />
@@ -288,6 +310,7 @@ function AuthenticatedApp() {
             <Route path="/person/:id" element={<PersonPage />} />
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/u/:username" element={<UserProfilePage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             {/* Già autenticati: /login e /register non hanno più senso */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

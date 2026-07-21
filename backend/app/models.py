@@ -197,6 +197,34 @@ class ListMember(Base):
     )
 
 
+class Notification(Base):
+    """Notifica in-app per l'utente (es. nuovo episodio in arrivo di una serie tracciata).
+
+    `ref` è la chiave di deduplica (es. "S2E5"): con l'UNIQUE su (user, tmdb, ref) lo
+    scheduler può girare ogni poche ore senza ricreare la stessa notifica.
+    """
+
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    type = Column(String, nullable=False)  # es. "new_episode"
+    tmdb_id = Column(Integer)
+    media_type = Column(String)
+    title = Column(String, nullable=False)
+    body = Column(String, nullable=False)
+    ref = Column(String)
+    poster_path = Column(String)
+    read_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "tmdb_id", "ref", name="uq_notification"),
+    )
+
+
 class EpisodeProgress(Base):
     """Un singolo episodio visto da un utente per una serie TV (o anime).
 

@@ -13,12 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from .config import SCHEDULER_ENABLED
 from .rate_limit import limiter
 from .routers import (
     auth,
     calendar,
     imports,
     lists,
+    notifications,
     progress,
     recommendations,
     search,
@@ -55,4 +57,26 @@ app.include_router(imports.router)
 app.include_router(calendar.router)
 app.include_router(lists.router)
 app.include_router(social.router)
+app.include_router(notifications.router)
 app.include_router(recommendations.router)
+
+
+# Scheduler in-app: avviato all'apertura, fermato allo spegnimento. Disattivabile con
+# SCHEDULER_ENABLED=false (test). L'import è locale per non tirarsi dentro APScheduler
+# quando lo scheduler è spento.
+@app.on_event("startup")
+async def _start_scheduler() -> None:
+    # async: garantisce che il loop uvicorn sia in esecuzione quando AsyncIOScheduler
+    # va a prenderlo con get_event_loop().
+    if SCHEDULER_ENABLED:
+        from .scheduler import start_scheduler
+
+        start_scheduler()
+
+
+@app.on_event("shutdown")
+def _stop_scheduler() -> None:
+    if SCHEDULER_ENABLED:
+        from .scheduler import stop_scheduler
+
+        stop_scheduler()

@@ -278,6 +278,16 @@ export const api = {
   getFeed: (limit = 40) =>
     request(`/social/feed?limit=${limit}`),
 
+  // Notifiche in-app
+  getNotifications: () =>
+    request('/notifications'),
+
+  getUnreadCount: () =>
+    request('/notifications/unread-count'),
+
+  markNotificationsRead: () =>
+    request('/notifications/read', { method: 'POST' }),
+
   // Recommendations
   getRecommendations: (limit = 20) =>
     request(`/recommendations?limit=${limit}`),
