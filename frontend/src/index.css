@@ -936,6 +936,269 @@ select {
   }
 }
 
+/* ── Import CSV ── */
+.dropzone {
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropzone:hover,
+.dropzone.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.dropzone > svg {
+  color: var(--accent);
+}
+
+.dropzone-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.import-summary {
+  margin-top: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.import-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.import-summary-row label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.import-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.import-progress {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-progress-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--bg-surface);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.import-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 5px;
+  transition: width 0.2s ease;
+}
+
+.import-progress span {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.import-report {
+  margin-top: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.import-report-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  margin-bottom: 14px;
+}
+
+.import-report-head svg {
+  color: var(--success);
+}
+
+.import-report-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.import-report-stats strong {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.import-notfound {
+  margin-top: 16px;
+  font-size: 0.85rem;
+}
+
+.import-notfound summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.import-notfound ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--text-muted);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.import-notfound li {
+  margin-bottom: 4px;
+}
+
+.page-subtitle code {
+  background: var(--bg-card);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+/* ── Impostazioni ── */
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 640px;
+}
+
+.settings-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+}
+
+.settings-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.settings-section h2 svg {
+  color: var(--accent);
+}
+
+.settings-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-field-value {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Nelle impostazioni gli input auth-* non devono avere il margine pieno delle pagine
+   di login: li stringiamo per stare comodi dentro la card. */
+.settings-form .auth-input {
+  margin-bottom: 8px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.sessions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.session-agent {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-date {
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-danger {
+  border-color: var(--danger);
+}
+
+.settings-danger h2,
+.settings-danger h2 svg {
+  color: var(--danger);
+}
+
 /* ── Detail Modal ── */
 .modal-overlay {
   position: fixed;
@@ -1424,4 +1687,11 @@ select {
 .sidebar-logout:hover {
   color: var(--danger);
   background: var(--bg-card);
+}
+
+/* Il link Impostazioni condivide lo stile del logout ma non la semantica "pericolo":
+   in hover (e da attivo, quando sei sulla pagina) vira sull'accent, non sul rosso. */
+.sidebar-settings:hover,
+.sidebar-settings.active {
+  color: var(--accent);
 }

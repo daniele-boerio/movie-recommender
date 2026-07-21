@@ -10,10 +10,19 @@ from sqlalchemy.orm import Session
 from .. import auth
 from ..config import CODE_EXPIRE_MINUTES, CODE_MAX_ATTEMPTS
 from ..database import get_db
-from ..emailer import send_verification_email
+from ..emailer import send_email_change_email, send_verification_email
 from ..models import EmailVerification, RefreshToken, User
 from ..rate_limit import limiter
-from ..schemas import LoginRequest, RegisterComplete, RegisterRequest, UserResponse
+from ..schemas import (
+    ChangeEmailConfirm,
+    ChangeEmailRequest,
+    ChangePasswordRequest,
+    DeleteAccountRequest,
+    LoginRequest,
+    RegisterComplete,
+    RegisterRequest,
+    UserResponse,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -258,3 +267,171 @@ def list_sessions(
         }
         for r in rows
     ]
+
+
+# --- Gestione account (impostazioni utente) ---------------------------------
+
+
+def _reset_sessions_keep_current(
+    db: Session, user: User, request: Request, response: Response
+) -> None:
+    """Butta fuori ogni sessione dell'utente e ne riapre una fresca sul dispositivo
+    corrente. Bump di token_version → gli access token già emessi (anche degli altri
+    dispositivi) smettono subito di valere; revoca di tutte le famiglie → nessuno può
+    più usare un refresh token vecchio. Poi si riemette la coppia per chi è qui ora."""
+    user.token_version += 1
+    auth.revoke_all_sessions(db, user.id)
+    db.flush()
+    _issue_session(db, user, request, response)  # committa lui
+
+
+@router.post("/change-password")
+@limiter.limit("10/hour")
+def change_password(
+    request: Request,
+    payload: ChangePasswordRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(auth.get_current_user_id),
+):
+    """Cambia la password e sloggia tutti gli altri dispositivi."""
+    user = db.get(User, current_user_id)
+    if not user or not auth.verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password attuale non corretta")
+
+    user.password_hash = auth.get_password_hash(payload.new_password)
+    _reset_sessions_keep_current(db, user, request, response)
+    return {"ok": True}
+
+
+@router.post("/change-email/request")
+@limiter.limit("5/hour")
+def change_email_request(
+    request: Request,
+    payload: ChangeEmailRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(auth.get_current_user_id),
+):
+    """Passo 1: verifico la password e spedisco un codice al nuovo indirizzo."""
+    user = db.get(User, current_user_id)
+    if not user or not auth.verify_password(payload.password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password non corretta")
+
+    new_email = payload.new_email.lower()
+    if new_email == user.email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "È già il tuo indirizzo email")
+    if db.query(User).filter(User.email == new_email).first():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email già in uso")
+
+    # Un solo codice valido per volta per quell'indirizzo: i precedenti si bruciano.
+    db.query(EmailVerification).filter(
+        EmailVerification.email == new_email,
+        EmailVerification.consumed_at.is_(None),
+    ).update({"consumed_at": datetime.now(timezone.utc)})
+
+    code = auth.generate_code()
+    db.add(
+        EmailVerification(
+            email=new_email,
+            code_hash=auth.hash_code(code),
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(minutes=CODE_EXPIRE_MINUTES),
+        )
+    )
+    db.commit()
+    background_tasks.add_task(send_email_change_email, new_email, code)
+    return {
+        "message": "Ti abbiamo inviato un codice al nuovo indirizzo.",
+        "expires_in_minutes": CODE_EXPIRE_MINUTES,
+    }
+
+
+@router.post("/change-email/confirm", response_model=UserResponse)
+def change_email_confirm(
+    payload: ChangeEmailConfirm,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(auth.get_current_user_id),
+):
+    """Passo 2: valido il codice arrivato al nuovo indirizzo e aggiorno l'email."""
+    user = db.get(User, current_user_id)
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Non autenticato")
+
+    new_email = payload.new_email.lower()
+    verification = (
+        db.query(EmailVerification)
+        .filter(
+            EmailVerification.email == new_email,
+            EmailVerification.consumed_at.is_(None),
+        )
+        .order_by(EmailVerification.created_at.desc())
+        .first()
+    )
+
+    if not verification:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+    if verification.attempts >= CODE_MAX_ATTEMPTS:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Troppi tentativi. Richiedi un nuovo codice.",
+        )
+    if auth._as_utc(verification.expires_at) < datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+    if not auth.verify_code(payload.code, verification.code_hash):
+        verification.attempts += 1
+        db.commit()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, _INVALID_CODE)
+
+    # Ricontrollo qui: tra la richiesta e la conferma un altro utente potrebbe aver
+    # preso quell'indirizzo.
+    if db.query(User).filter(User.email == new_email).first():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email già in uso")
+
+    verification.consumed_at = datetime.now(timezone.utc)
+    user.email = new_email
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email già in uso")
+    db.refresh(user)
+    return user
+
+
+@router.post("/sessions/revoke-others")
+def revoke_other_sessions(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(auth.get_current_user_id),
+):
+    """Termina tutte le sessioni tranne quella corrente."""
+    user = db.get(User, current_user_id)
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Non autenticato")
+    _reset_sessions_keep_current(db, user, request, response)
+    return {"ok": True}
+
+
+@router.delete("/account")
+@limiter.limit("5/hour")
+def delete_account(
+    request: Request,
+    payload: DeleteAccountRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(auth.get_current_user_id),
+):
+    """Elimina l'account e tutti i suoi dati.
+
+    Le righe collegate (watched, progressi episodi, refresh token) spariscono da sole:
+    le foreign key hanno ON DELETE CASCADE, è Postgres a propagare la cancellazione."""
+    user = db.get(User, current_user_id)
+    if not user or not auth.verify_password(payload.password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password non corretta")
+
+    db.delete(user)
+    db.commit()
+    auth.clear_auth_cookies(response)
+    return {"ok": True}

@@ -134,6 +134,16 @@ def revoke_token_family(db: Session, user_id: int, family_id: str) -> None:
     ).update({"revoked_at": datetime.now(timezone.utc)})
 
 
+def revoke_all_sessions(db: Session, user_id: int) -> None:
+    """Revoca ogni sessione dell'utente (tutte le famiglie). Serve al cambio password e
+    all'"esci da tutti gli altri dispositivi": va abbinata a un bump di token_version,
+    così anche gli access token già emessi smettono subito di valere."""
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.revoked_at.is_(None),
+    ).update({"revoked_at": datetime.now(timezone.utc)})
+
+
 def revoke_session(db: Session, raw_token: str) -> bool:
     """Revoca la sessione del dispositivo. Non solleva se il token è ignoto: un
     logout deve riuscire comunque."""

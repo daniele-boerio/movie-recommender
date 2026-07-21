@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, Settings, LogOut } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -8,6 +8,8 @@ import DiscoverPage from './pages/DiscoverPage';
 import WatchedPage from './pages/WatchedPage';
 import WatchlistPage from './pages/WatchlistPage';
 import StatsPage from './pages/StatsPage';
+import ImportPage from './pages/ImportPage';
+import SettingsPage from './pages/SettingsPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -53,9 +55,9 @@ function AuthenticatedApp() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [toasts, setToasts] = useState([]);
 
-  // Load both lists on mount. Un titolo sta in una sola delle due (lo garantisce il
-  // vincolo UNIQUE lato DB), quindi le due mappe non si sovrappongono mai.
-  useEffect(() => {
+  // Ricarica entrambe le liste dal server. Serve al mount e dopo un import massivo.
+  // Un titolo sta in una sola delle due (lo garantisce il vincolo UNIQUE lato DB).
+  const reloadLists = useCallback(() => {
     const toMap = (items) => {
       const map = {};
       items.forEach((it) => {
@@ -66,6 +68,8 @@ function AuthenticatedApp() {
     api.getWatched().then((items) => setWatchedMap(toMap(items))).catch(() => {});
     api.getWatchlist().then((items) => setWatchlistMap(toMap(items))).catch(() => {});
   }, []);
+
+  useEffect(() => { reloadLists(); }, [reloadLists]);
 
   const isWatched = useCallback(
     (tmdbId, mediaType) => !!watchedMap[`${tmdbId}-${mediaType}`],
@@ -202,6 +206,7 @@ function AuthenticatedApp() {
     toggleWatched,
     toggleWatchlist,
     updateRating,
+    reloadLists,
     setSelectedItem,
     addToast,
   };
@@ -242,6 +247,9 @@ function AuthenticatedApp() {
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <span className="sidebar-username" title={user.email}>{user.username}</span>
+              <NavLink to="/settings" className="sidebar-logout sidebar-settings" title="Impostazioni">
+                <Settings size={15} />
+              </NavLink>
               <button className="sidebar-logout" onClick={logout} title="Esci">
                 <LogOut size={15} />
               </button>
@@ -258,6 +266,8 @@ function AuthenticatedApp() {
             <Route path="/watched" element={<WatchedPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/stats" element={<StatsPage />} />
+            <Route path="/import" element={<ImportPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
             {/* Già autenticati: /login e /register non hanno più senso */}
             <Route path="*" element={<Navigate to="/" replace />} />

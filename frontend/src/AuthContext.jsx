@@ -41,8 +41,16 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Rilegge l'utente dal server: serve dopo un cambio email, così la UI riflette
+  // subito il nuovo indirizzo senza dover rifare il login.
+  const refreshUser = useCallback(async () => {
+    const u = await api.me();
+    setUser(u);
+    return u;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

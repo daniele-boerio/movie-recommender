@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { BookmarkCheck, Search, SortDesc } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { BookmarkCheck, Search, Upload } from 'lucide-react';
 import { useApp } from '../App';
 import MediaCard from '../components/MediaCard';
 
@@ -39,11 +40,16 @@ export default function WatchedPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">I miei visti</h1>
-        <p className="page-subtitle">
-          {totalMovies} film · {totalTv} serie TV
-        </p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 className="page-title">I miei visti</h1>
+          <p className="page-subtitle">
+            {totalMovies} film · {totalTv} serie TV
+          </p>
+        </div>
+        <Link to="/import" className="btn btn-secondary">
+          <Upload size={15} /> Importa CSV
+        </Link>
       </div>
 
       {Object.keys(watchedMap).length === 0 ? (
@@ -51,6 +57,9 @@ export default function WatchedPage() {
           <BookmarkCheck className="empty-state-icon" />
           <h3>La tua lista è vuota</h3>
           <p>Vai alla sezione Scopri o Cerca per aggiungere film e serie TV che hai già visto</p>
+          <Link to="/import" className="btn btn-secondary" style={{ marginTop: 16 }}>
+            <Upload size={15} /> Importa da CSV
+          </Link>
         </div>
       ) : (
         <>

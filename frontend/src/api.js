@@ -47,6 +47,33 @@ async function request(path, options = {}, allowRefresh = true) {
   return res.json();
 }
 
+// Scarica una risposta binaria (es. l'export CSV) e la salva come file. Stesso rientro
+// sul 401 di `request`, ma qui il corpo è un blob, non JSON.
+async function downloadBlob(path, filename, allowRefresh = true) {
+  const res = await fetch(`${BASE}${path}`, { credentials: 'same-origin' });
+
+  if (res.status === 401 && allowRefresh) {
+    const refreshed = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    if (refreshed.ok) return downloadBlob(path, filename, false);
+    onSessionExpired?.();
+    throw new Error('Sessione scaduta');
+  }
+  if (!res.ok) throw new Error(`Errore ${res.status}`);
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   // Auth
   requestCode: (email) =>
@@ -67,6 +94,33 @@ export const api = {
   logout: () => request('/auth/logout', { method: 'POST' }),
 
   me: () => request('/auth/me'),
+
+  // Gestione account (pagina Impostazioni)
+  changePassword: (current_password, new_password) =>
+    request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password, new_password }),
+    }),
+
+  requestEmailChange: (new_email, password) =>
+    request('/auth/change-email/request', {
+      method: 'POST',
+      body: JSON.stringify({ new_email, password }),
+    }),
+
+  confirmEmailChange: (new_email, code) =>
+    request('/auth/change-email/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ new_email, code }),
+    }),
+
+  getSessions: () => request('/auth/sessions'),
+
+  revokeOtherSessions: () =>
+    request('/auth/sessions/revoke-others', { method: 'POST' }),
+
+  deleteAccount: (password) =>
+    request('/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
 
   // Search & discovery
   search: (q, mediaType = 'multi', page = 1) =>
@@ -140,6 +194,13 @@ export const api = {
   // Statistiche personali
   getStats: () =>
     request('/stats'),
+
+  // Import CSV (batch di righe già normalizzate)
+  importCsv: (items) =>
+    request('/import/csv', { method: 'POST', body: JSON.stringify({ items }) }),
+
+  // Export CSV (scarica un file, non JSON)
+  exportCsv: () => downloadBlob('/import/export', 'watchnext-export.csv'),
 
   // Recommendations
   getRecommendations: (limit = 20) =>

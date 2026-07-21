@@ -46,6 +46,30 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    # stessi vincoli della registrazione: oltre i 72 byte bcrypt tronca comunque.
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+
+class ChangeEmailRequest(BaseModel):
+    """Passo 1: chiedo il codice sul nuovo indirizzo, confermando con la password."""
+
+    new_email: EmailStr
+    password: str
+
+
+class ChangeEmailConfirm(BaseModel):
+    """Passo 2: il codice ricevuto sul nuovo indirizzo."""
+
+    new_email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+
 # --- Progresso episodi ---
 
 class EpisodeRef(BaseModel):
@@ -59,6 +83,23 @@ class SeasonMark(BaseModel):
     """Segna in blocco un insieme di episodi di una stagione."""
 
     episode_numbers: list[int] = Field(..., min_length=1)
+
+
+# --- Import CSV ---
+
+class ImportItem(BaseModel):
+    """Una riga di CSV già normalizzata dal frontend. Il voto arriva già su scala 1-10."""
+
+    title: str
+    year: int | None = None
+    media_type: str = "movie"  # "movie" | "tv"
+    rating: int | None = None
+
+
+class ImportRequest(BaseModel):
+    """Un batch di righe da importare. Il frontend spezza il file per mostrare il progresso."""
+
+    items: list[ImportItem] = Field(..., min_length=1, max_length=100)
 
 
 class UserResponse(BaseModel):
