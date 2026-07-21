@@ -107,6 +107,30 @@ class Watched(Base):
     )
 
 
+class Follow(Base):
+    """Relazione di follow unidirezionale: follower_id segue following_id.
+
+    Come su molti social non serve reciprocità: seguire non richiede conferma. La coppia
+    è unica (non si segue due volte); la FK in cascata pulisce i follow quando un utente
+    viene eliminato, da entrambi i lati.
+    """
+
+    __tablename__ = "follows"
+
+    id = Column(Integer, primary_key=True)
+    follower_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    following_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uq_follow"),
+    )
+
+
 class CustomList(Base):
     """Una lista tematica creata dall'utente ("Film di Natale", "Da vedere con lei")."""
 

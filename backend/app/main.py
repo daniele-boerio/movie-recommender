@@ -22,6 +22,7 @@ from .routers import (
     progress,
     recommendations,
     search,
+    social,
     stats,
     watched,
     watchlist,
@@ -53,4 +54,5 @@ app.include_router(stats.router)
 app.include_router(imports.router)
 app.include_router(calendar.router)
 app.include_router(lists.router)
+app.include_router(social.router)
 app.include_router(recommendations.router)

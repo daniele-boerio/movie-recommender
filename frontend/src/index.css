@@ -1635,6 +1635,47 @@ select {
   background: var(--danger);
 }
 
+/* ── Community / utenti ── */
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+  margin-top: 16px;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.user-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-row-name:hover {
+  color: var(--accent);
+}
+
+/* Voto personale mostrato sulla card (es. sul profilo di un altro utente) */
+.media-card-userrating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* ── Menu "aggiungi a lista" (dentro il DetailModal) ── */
 .addlist {
   margin-bottom: 24px;

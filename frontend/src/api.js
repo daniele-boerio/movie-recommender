@@ -253,6 +253,22 @@ export const api = {
   // Export CSV (scarica un file, non JSON)
   exportCsv: () => downloadBlob('/import/export', 'watchnext-export.csv'),
 
+  // Social (utenti, profili, follow)
+  searchUsers: (q) =>
+    request(`/users/search?q=${encodeURIComponent(q)}`),
+
+  getProfile: (username) =>
+    request(`/users/${encodeURIComponent(username)}`),
+
+  followUser: (username) =>
+    request(`/users/${encodeURIComponent(username)}/follow`, { method: 'POST' }),
+
+  unfollowUser: (username) =>
+    request(`/users/${encodeURIComponent(username)}/follow`, { method: 'DELETE' }),
+
+  getFollowing: () =>
+    request('/social/following'),
+
   // Recommendations
   getRecommendations: (limit = 20) =>
     request(`/recommendations?limit=${limit}`),

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Settings, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Settings, LogOut } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -15,6 +15,8 @@ import ImportPage from './pages/ImportPage';
 import SettingsPage from './pages/SettingsPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import PersonPage from './pages/PersonPage';
+import CommunityPage from './pages/CommunityPage';
+import UserProfilePage from './pages/UserProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -225,6 +227,7 @@ function AuthenticatedApp() {
     { to: '/watchlist', icon: Bookmark, label: 'Da vedere' },
     { to: '/lists', icon: ListChecks, label: 'Liste' },
     { to: '/calendar', icon: CalendarDays, label: 'In arrivo' },
+    { to: '/community', icon: Users, label: 'Community' },
     { to: '/recommendations', icon: Sparkles, label: 'Per te' },
     { to: '/stats', icon: BarChart3, label: 'Statistiche' },
   ];
@@ -283,6 +286,8 @@ function AuthenticatedApp() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
             <Route path="/person/:id" element={<PersonPage />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/u/:username" element={<UserProfilePage />} />
             {/* Già autenticati: /login e /register non hanno più senso */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

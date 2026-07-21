@@ -2,7 +2,7 @@ import { Star, Check, Bookmark, BookmarkCheck } from 'lucide-react';
 import { posterUrl } from '../api';
 import { useApp } from '../App';
 
-export default function MediaCard({ item, showReason }) {
+export default function MediaCard({ item, showReason, personalRating }) {
   const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, setSelectedItem } = useApp();
   const title = item.title || item.name || '';
   const date = item.release_date || item.first_air_date || '';
@@ -86,6 +86,12 @@ export default function MediaCard({ item, showReason }) {
           <span className="media-card-type">
             {item.media_type === 'tv' ? 'Serie' : 'Film'}
           </span>
+          {personalRating != null && (
+            <span className="media-card-userrating" title="Il suo voto">
+              <Star size={12} fill="currentColor" />
+              {personalRating}
+            </span>
+          )}
         </div>
         {showReason && item.recommended_by && item.recommended_by.length > 0 && (
           <div className="rec-reason">
