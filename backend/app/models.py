@@ -174,6 +174,29 @@ class ListItem(Base):
     )
 
 
+class ListMember(Base):
+    """Membri aggiuntivi di una lista condivisa. Il proprietario resta in custom_lists.user_id;
+    qui stanno gli altri utenti che possono aggiungere/togliere titoli (non rinominare/eliminare)."""
+
+    __tablename__ = "list_members"
+
+    id = Column(Integer, primary_key=True)
+    list_id = Column(
+        Integer,
+        ForeignKey("custom_lists.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    added_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("list_id", "user_id", name="uq_list_member"),
+    )
+
+
 class EpisodeProgress(Base):
     """Un singolo episodio visto da un utente per una serie TV (o anime).
 

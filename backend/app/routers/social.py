@@ -92,6 +92,28 @@ def get_profile(
         for w in watched[:60]
     ]
 
+    # Compatibilità di gusti: sui titoli che entrambi abbiamo visto E votato, quanto
+    # sono vicini i voti. Differenza media su scala 1-10 (max 9) → percentuale di affinità.
+    compatibility = None
+    if u.id != user_id:
+        their_rated = {
+            (w.tmdb_id, w.media_type): w.rating for w in watched if w.rating is not None
+        }
+        my_rated = {
+            (w.tmdb_id, w.media_type): w.rating
+            for w in db.query(Watched).filter(
+                Watched.user_id == user_id,
+                Watched.status == "watched",
+                Watched.rating.isnot(None),
+            ).all()
+        }
+        common = set(their_rated) & set(my_rated)
+        score = None
+        if common:
+            avg_diff = sum(abs(their_rated[k] - my_rated[k]) for k in common) / len(common)
+            score = round(100 * (1 - avg_diff / 9))
+        compatibility = {"score": score, "common": len(common)}
+
     return {
         "id": u.id,
         "username": u.username,
@@ -100,6 +122,7 @@ def get_profile(
         "followers": followers,
         "following": following,
         "stats": {"movie": movie, "tv": tv, "all": movie + tv, "avg_rating": avg},
+        "compatibility": compatibility,
         "watched": items,
     }
 

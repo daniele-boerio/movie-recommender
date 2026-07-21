@@ -52,6 +52,10 @@ class ListItemAdd(BaseModel):
     release_date: str | None = None
 
 
+class MemberAdd(BaseModel):
+    username: str
+
+
 # --- Auth ---
 
 class RegisterRequest(BaseModel):

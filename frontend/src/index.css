@@ -1590,6 +1590,86 @@ select {
   padding: 0 14px 12px;
   font-size: 0.8rem;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-shared-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Membri di una lista condivisa */
+.members-box {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.members-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.members-head svg {
+  color: var(--accent);
+}
+
+.members-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.member-chip.owner {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.member-remove {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.member-remove:hover {
+  color: var(--danger);
+}
+
+.members-invite {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.members-invite .auth-input {
+  margin-bottom: 0;
 }
 
 .list-rename {
@@ -1665,6 +1745,31 @@ select {
 
 .user-row-name:hover {
   color: var(--accent);
+}
+
+/* Affinità di gusti (sul profilo) */
+.compat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.compat-score {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.compat-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.compat-none {
+  font-size: 0.82rem;
+  color: var(--text-muted);
 }
 
 /* Feed attività */

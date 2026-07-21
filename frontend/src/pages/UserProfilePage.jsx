@@ -65,6 +65,22 @@ export default function UserProfilePage() {
           <p className="page-subtitle">
             {profile.followers} follower · {profile.following} seguiti
           </p>
+          {profile.compatibility && (
+            <div className="compat">
+              {profile.compatibility.common === 0 ? (
+                <span className="compat-none">Nessun voto in comune per l'affinità</span>
+              ) : (
+                <>
+                  <span className="compat-score">{profile.compatibility.score}%</span>
+                  <span className="compat-label">
+                    affinità di gusti · {profile.compatibility.common} titol
+                    {profile.compatibility.common === 1 ? 'o' : 'i'} votat
+                    {profile.compatibility.common === 1 ? 'o' : 'i'} in comune
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </div>
         {!profile.is_self && (
           <button

@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id
 from ..database import get_db
-from ..models import CustomList, ListItem
-from ..schemas import ListCreate, ListItemAdd, ListRename
+from ..models import CustomList, ListItem, ListMember, User
+from ..schemas import ListCreate, ListItemAdd, ListRename, MemberAdd
 
 router = APIRouter(prefix="/api/lists", tags=["Lists"])
 
@@ -29,6 +29,7 @@ def _serialize_item(i: ListItem) -> dict:
 
 
 def _owned_list(db: Session, user_id: int, list_id: int) -> CustomList:
+    """Solo il proprietario: rinomina, elimina, gestione membri."""
     lst = (
         db.query(CustomList)
         .filter(CustomList.id == list_id, CustomList.user_id == user_id)
@@ -39,25 +40,45 @@ def _owned_list(db: Session, user_id: int, list_id: int) -> CustomList:
     return lst
 
 
+def _accessible_list(db: Session, user_id: int, list_id: int) -> CustomList:
+    """Proprietario o membro: leggere la lista e aggiungere/togliere titoli."""
+    lst = db.query(CustomList).filter(CustomList.id == list_id).first()
+    if lst and (
+        lst.user_id == user_id
+        or db.query(ListMember)
+        .filter(ListMember.list_id == list_id, ListMember.user_id == user_id)
+        .first()
+    ):
+        return lst
+    raise HTTPException(404, "Lista non trovata")
+
+
 @router.get("")
 def get_lists(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Le liste dell'utente, con conteggio e qualche poster per l'anteprima."""
-    lists = (
+    """Le liste dell'utente (possedute + quelle di cui è membro), con anteprima."""
+    owned = db.query(CustomList).filter(CustomList.user_id == user_id).all()
+    member_of = (
         db.query(CustomList)
-        .filter(CustomList.user_id == user_id)
-        .order_by(CustomList.created_at.desc())
+        .join(ListMember, ListMember.list_id == CustomList.id)
+        .filter(ListMember.user_id == user_id)
         .all()
     )
+    # id decrescente = dalle più recenti; l'id è monotono con la creazione.
+    all_lists = sorted(owned + member_of, key=lambda lst: lst.id, reverse=True)
+
     out = []
-    for lst in lists:
+    for lst in all_lists:
         items = (
             db.query(ListItem)
             .filter(ListItem.list_id == lst.id)
             .order_by(ListItem.added_at.desc())
             .all()
+        )
+        member_count = (
+            db.query(ListMember).filter(ListMember.list_id == lst.id).count()
         )
         out.append(
             {
@@ -65,6 +86,8 @@ def get_lists(
                 "name": lst.name,
                 "count": len(items),
                 "preview": [i.poster_path for i in items[:4] if i.poster_path],
+                "is_owner": lst.user_id == user_id,
+                "shared": member_count > 0,
             }
         )
     return out
@@ -89,14 +112,29 @@ def get_list(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    lst = _owned_list(db, user_id, list_id)
+    lst = _accessible_list(db, user_id, list_id)
     items = (
         db.query(ListItem)
         .filter(ListItem.list_id == lst.id)
         .order_by(ListItem.added_at.desc())
         .all()
     )
-    return {"id": lst.id, "name": lst.name, "items": [_serialize_item(i) for i in items]}
+    members = (
+        db.query(User)
+        .join(ListMember, ListMember.user_id == User.id)
+        .filter(ListMember.list_id == lst.id)
+        .order_by(User.username)
+        .all()
+    )
+    owner = db.get(User, lst.user_id)
+    return {
+        "id": lst.id,
+        "name": lst.name,
+        "is_owner": lst.user_id == user_id,
+        "owner": owner.username if owner else None,
+        "members": [{"id": m.id, "username": m.username} for m in members],
+        "items": [_serialize_item(i) for i in items],
+    }
 
 
 @router.patch("/{list_id}")
@@ -131,7 +169,7 @@ def add_item(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    _owned_list(db, user_id, list_id)
+    _accessible_list(db, user_id, list_id)  # proprietario o membro
     media_type = "tv" if body.media_type == "tv" else "movie"
     db.add(
         ListItem(
@@ -160,7 +198,7 @@ def remove_item(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    _owned_list(db, user_id, list_id)
+    _accessible_list(db, user_id, list_id)  # proprietario o membro
     deleted = (
         db.query(ListItem)
         .filter(
@@ -173,4 +211,48 @@ def remove_item(
     db.commit()
     if deleted == 0:
         raise HTTPException(404, "Non trovato nella lista")
+    return {"ok": True}
+
+
+@router.post("/{list_id}/members", status_code=201)
+def add_member(
+    list_id: int,
+    body: MemberAdd,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """Invita un utente nella lista (solo il proprietario)."""
+    lst = _owned_list(db, user_id, list_id)
+    u = db.query(User).filter(User.username == body.username.lower()).first()
+    if not u:
+        raise HTTPException(404, "Utente non trovato")
+    if u.id == lst.user_id:
+        raise HTTPException(400, "Il proprietario fa già parte della lista")
+    db.add(ListMember(list_id=list_id, user_id=u.id))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()  # già membro: idempotente
+    return {"ok": True}
+
+
+@router.delete("/{list_id}/members/{member_id}")
+def remove_member(
+    list_id: int,
+    member_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """Rimuove un membro. Il proprietario può togliere chiunque; un membro può togliere
+    solo se stesso (lasciare la lista)."""
+    lst = db.query(CustomList).filter(CustomList.id == list_id).first()
+    if not lst:
+        raise HTTPException(404, "Lista non trovata")
+    if lst.user_id != user_id and member_id != user_id:
+        # Non sei il proprietario e non stai lasciando: non riveliamo nemmeno l'esistenza.
+        raise HTTPException(404, "Lista non trovata")
+    db.query(ListMember).filter(
+        ListMember.list_id == list_id, ListMember.user_id == member_id
+    ).delete()
+    db.commit()
     return {"ok": True}

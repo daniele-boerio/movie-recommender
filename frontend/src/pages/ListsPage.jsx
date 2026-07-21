@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ListChecks, Plus } from 'lucide-react';
+import { ListChecks, Plus, Users } from 'lucide-react';
 import { api, posterUrl } from '../api';
 import { useApp } from '../App';
 
@@ -74,7 +74,12 @@ export default function ListsPage() {
                 )}
               </div>
               <div className="list-card-name">{l.name}</div>
-              <div className="list-card-count">{l.count} titol{l.count === 1 ? 'o' : 'i'}</div>
+              <div className="list-card-count">
+                {l.count} titol{l.count === 1 ? 'o' : 'i'}
+                {(l.shared || !l.is_owner) && (
+                  <span className="list-shared-badge"><Users size={11} /> {l.is_owner ? 'condivisa' : 'con te'}</span>
+                )}
+              </div>
             </button>
           ))}
         </div>

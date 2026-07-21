@@ -246,6 +246,12 @@ export const api = {
   removeFromList: (id, tmdbId, mediaType) =>
     request(`/lists/${id}/items/${tmdbId}/${mediaType}`, { method: 'DELETE' }),
 
+  addListMember: (id, username) =>
+    request(`/lists/${id}/members`, { method: 'POST', body: JSON.stringify({ username }) }),
+
+  removeListMember: (id, memberId) =>
+    request(`/lists/${id}/members/${memberId}`, { method: 'DELETE' }),
+
   // Import CSV (batch di righe già normalizzate)
   importCsv: (items) =>
     request('/import/csv', { method: 'POST', body: JSON.stringify({ items }) }),
