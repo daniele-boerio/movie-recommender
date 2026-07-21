@@ -7,11 +7,14 @@ import StarRating from './StarRating';
 import EpisodeTracker from './EpisodeTracker';
 
 export default function DetailModal({ item, onClose }) {
-  const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, watchedMap, updateRating } = useApp();
+  const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, watchedMap, updateRating, reloadLists, addToast } = useApp();
   const navigate = useNavigate();
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [review, setReview] = useState('');
+  const [watchedOn, setWatchedOn] = useState('');
+  const [savingDiary, setSavingDiary] = useState(false);
 
   const tmdbId = item.tmdb_id || item.id;
   const mediaType = item.media_type;
@@ -34,6 +37,30 @@ export default function DetailModal({ item, onClose }) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  // Sincronizza il diario locale all'apertura di un titolo. Non dipende da watchedMap
+  // di proposito: dopo il salvataggio non vogliamo che un reload sovrascriva l'input.
+  useEffect(() => {
+    const wd = watchedMap[`${tmdbId}-${mediaType}`];
+    setReview(wd?.review || '');
+    setWatchedOn(wd?.watched_on || '');
+  }, [tmdbId, mediaType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveDiary = async () => {
+    setSavingDiary(true);
+    try {
+      await api.updateWatched(tmdbId, mediaType, {
+        review: review.trim(),
+        watched_on: watchedOn || null,
+      });
+      addToast('Diario salvato');
+      reloadLists();
+    } catch {
+      addToast('Errore nel salvataggio');
+    } finally {
+      setSavingDiary(false);
+    }
+  };
 
   const title = details?.title || details?.name || item.title || item.name || '';
   const overview = details?.overview || item.overview || '';
@@ -238,6 +265,34 @@ export default function DetailModal({ item, onClose }) {
                   value={currentRating || 0}
                   onChange={(r) => updateRating(tmdbId, mediaType, r)}
                 />
+              </div>
+            )}
+
+            {/* Diario personale: quando l'ho visto + recensione */}
+            {watched && (
+              <div className="diary-box">
+                <div className="diary-field">
+                  <label className="diary-label" htmlFor="watched-on">Visto il</label>
+                  <input
+                    id="watched-on"
+                    type="date"
+                    className="diary-date"
+                    value={watchedOn}
+                    onChange={(e) => setWatchedOn(e.target.value)}
+                  />
+                </div>
+                <label className="diary-label" htmlFor="review">La tua recensione</label>
+                <textarea
+                  id="review"
+                  className="diary-review"
+                  value={review}
+                  onChange={(e) => setReview(e.target.value)}
+                  placeholder="Cosa ne pensi? (appunti, sensazioni, con chi l'hai visto…)"
+                  rows={3}
+                />
+                <button className="btn btn-secondary diary-save" onClick={saveDiary} disabled={savingDiary}>
+                  {savingDiary ? 'Salvataggio…' : 'Salva nel diario'}
+                </button>
               </div>
             )}
 

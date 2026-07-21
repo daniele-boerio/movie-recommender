@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user_id
 from ..database import get_db
 from ..models import Watched
-from ..schemas import RatingUpdate, WatchedItem
+from ..schemas import WatchedItem, WatchedPatch
 
 router = APIRouter(prefix="/api/watched", tags=["Watched"])
 
@@ -35,6 +35,8 @@ def _serialize(w: Watched) -> dict:
         "release_date": w.release_date,
         "added_at": w.added_at.isoformat() if w.added_at else None,
         "rating": w.rating,
+        "review": w.review,
+        "watched_on": w.watched_on,
     }
 
 
@@ -92,28 +94,39 @@ async def add_watched(
 
 
 @router.patch("/{tmdb_id}/{media_type}")
-async def update_rating(
+async def update_watched(
     tmdb_id: int,
     media_type: str,
-    body: RatingUpdate,
+    body: WatchedPatch,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Aggiorna il voto personale.
+    """Aggiorna voto, recensione e/o data di visione di un titolo visto.
 
-    Il filtro su user_id non è solo per correttezza: senza, chiunque potrebbe
-    cambiare il voto nella lista di un altro conoscendone tmdb_id e media_type.
-    Un titolo non proprio dà 404, non 403: non riveliamo cosa hanno gli altri.
+    Si toccano solo i campi presenti nel payload (model_fields_set), così aggiornare
+    il voto non azzera la recensione e viceversa.
+
+    Il filtro su user_id non è solo per correttezza: senza, chiunque potrebbe modificare
+    la riga di un altro conoscendone tmdb_id e media_type. Un titolo non proprio dà 404,
+    non 403: non riveliamo cosa hanno gli altri.
     """
+    values = {
+        field: getattr(body, field)
+        for field in body.model_fields_set
+        if field in ("rating", "review", "watched_on")
+    }
+    if not values:
+        raise HTTPException(400, "Nessun campo da aggiornare")
+
     updated = (
         db.query(Watched)
         .filter(
             Watched.user_id == user_id,
             Watched.tmdb_id == tmdb_id,
             Watched.media_type == media_type,
-            Watched.status == "watched",  # il voto ha senso solo su un titolo visto
+            Watched.status == "watched",  # diario e voto hanno senso solo su un titolo visto
         )
-        .update({"rating": body.rating})
+        .update(values)
     )
     db.commit()
     if updated == 0:

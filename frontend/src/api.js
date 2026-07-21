@@ -177,6 +177,13 @@ export const api = {
       body: JSON.stringify({ rating }),
     }),
 
+  // Patch parziale: recensione e/o data di visione (i campi assenti restano invariati)
+  updateWatched: (tmdbId, mediaType, patch) =>
+    request(`/watched/${tmdbId}/${mediaType}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
   // Watchlist "Da vedere" (stessa forma degli item di /watched)
   getWatchlist: () =>
     request('/watchlist'),

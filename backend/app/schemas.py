@@ -21,6 +21,18 @@ class RatingUpdate(BaseModel):
     rating: int = Field(..., ge=1, le=10)
 
 
+class WatchedPatch(BaseModel):
+    """Aggiornamento parziale di un titolo visto: voto, recensione, data di visione.
+
+    Tutti opzionali; si aggiornano solo i campi effettivamente presenti nel payload
+    (lo distingue `model_fields_set`), così mandare solo il voto non cancella la recensione.
+    """
+
+    rating: int | None = Field(None, ge=1, le=10)
+    review: str | None = None
+    watched_on: str | None = None
+
+
 # --- Auth ---
 
 class RegisterRequest(BaseModel):

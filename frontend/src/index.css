@@ -1236,6 +1236,67 @@ select {
   margin-bottom: 8px;
 }
 
+/* ── Diario personale (nel DetailModal) ── */
+.diary-box {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diary-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.diary-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.diary-date {
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] .diary-date {
+  color-scheme: light;
+}
+
+.diary-review {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color var(--transition);
+}
+
+.diary-review:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.diary-save {
+  align-self: flex-start;
+}
+
 /* ── Dove guardarlo (streaming) + trailer ── */
 .watch-providers {
   margin-bottom: 20px;

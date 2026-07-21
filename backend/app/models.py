@@ -90,6 +90,8 @@ class Watched(Base):
     release_date = Column(String)
     added_at = Column(DateTime(timezone=True), server_default=func.now())
     rating = Column(Integer)  # voto personale 1-10
+    review = Column(Text)  # recensione/nota personale, testo libero
+    watched_on = Column(String)  # data di visione dichiarata dall'utente, "YYYY-MM-DD"
 
     __table_args__ = (
         # user_id DEVE far parte del vincolo: senza, il secondo utente che segna un
