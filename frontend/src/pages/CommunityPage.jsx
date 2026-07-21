@@ -20,12 +20,15 @@ export default function CommunityPage() {
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [following, setFollowing] = useState([]);
+  const [followers, setFollowers] = useState([]);
   const [feed, setFeed] = useState([]);
 
   const loadFollowing = () => api.getFollowing().then(setFollowing).catch(() => setFollowing([]));
+  const loadFollowers = () => api.getFollowers().then(setFollowers).catch(() => setFollowers([]));
 
   useEffect(() => {
     loadFollowing();
+    loadFollowers();
     api.getFeed().then(setFeed).catch(() => setFeed([]));
   }, []);
 
@@ -50,6 +53,17 @@ export default function CommunityPage() {
         rs.map((r) => (r.id === u.id ? { ...r, is_following: !u.is_following } : r))
       );
       loadFollowing();
+      loadFollowers();
+    } catch {
+      addToast('Errore');
+    }
+  };
+
+  const followBack = async (username) => {
+    try {
+      await api.followUser(username);
+      loadFollowing();
+      loadFollowers();
     } catch {
       addToast('Errore');
     }
@@ -141,9 +155,32 @@ export default function CommunityPage() {
               <Link to={`/u/${u.username}`} className="user-row-name">
                 <Users size={16} /> {u.username}
               </Link>
+              {u.mutual && <span className="mutual-badge">vi seguite a vicenda</span>}
             </div>
           ))}
         </div>
+      )}
+
+      {followers.length > 0 && (
+        <>
+          <h2 className="section-title" style={{ marginTop: 32 }}>Ti seguono</h2>
+          <div className="user-list">
+            {followers.map((u) => (
+              <div className="user-row" key={u.id}>
+                <Link to={`/u/${u.username}`} className="user-row-name">
+                  <Users size={16} /> {u.username}
+                </Link>
+                {u.following ? (
+                  <span className="mutual-badge">vi seguite a vicenda</span>
+                ) : (
+                  <button className="btn btn-primary" onClick={() => followBack(u.username)}>
+                    <UserPlus size={15} /> Segui anche tu
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </>
   );

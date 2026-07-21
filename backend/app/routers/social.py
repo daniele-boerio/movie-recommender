@@ -159,12 +159,24 @@ def unfollow_user(
     return {"ok": True}
 
 
+def _mutual_ids(db: Session, user_id: int, other_ids: set[int]) -> set[int]:
+    """Fra `other_ids`, quali seguono a loro volta `user_id` (follow reciproco)."""
+    if not other_ids:
+        return set()
+    return {
+        f.follower_id
+        for f in db.query(Follow.follower_id)
+        .filter(Follow.following_id == user_id, Follow.follower_id.in_(other_ids))
+        .all()
+    }
+
+
 @router.get("/social/following")
 def my_following(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Gli utenti che seguo."""
+    """Gli utenti che seguo (con flag `mutual` se mi seguono a loro volta)."""
     rows = (
         db.query(User)
         .join(Follow, Follow.following_id == User.id)
@@ -172,7 +184,34 @@ def my_following(
         .order_by(User.username)
         .all()
     )
-    return [{"id": u.id, "username": u.username} for u in rows]
+    mutual = _mutual_ids(db, user_id, {u.id for u in rows})
+    return [
+        {"id": u.id, "username": u.username, "mutual": u.id in mutual} for u in rows
+    ]
+
+
+@router.get("/social/followers")
+def my_followers(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """Gli utenti che mi seguono. `following` = se li seguo anch'io (reciproco)."""
+    rows = (
+        db.query(User)
+        .join(Follow, Follow.follower_id == User.id)
+        .filter(Follow.following_id == user_id)
+        .order_by(User.username)
+        .all()
+    )
+    # Chi seguo io, per marcare i reciproci.
+    i_follow = {
+        f.following_id
+        for f in db.query(Follow.following_id).filter(Follow.follower_id == user_id).all()
+    }
+    return [
+        {"id": u.id, "username": u.username, "following": u.id in i_follow}
+        for u in rows
+    ]
 
 
 @router.get("/social/feed")

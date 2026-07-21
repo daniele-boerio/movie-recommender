@@ -104,7 +104,9 @@ async def export_csv(
 
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(["title", "year", "type", "rating", "status", "tmdb_id"])
+    writer.writerow(
+        ["title", "year", "type", "rating", "status", "watched_on", "review", "tmdb_id"]
+    )
     for w in rows:
         year = (w.release_date or "")[:4]
         writer.writerow(
@@ -114,6 +116,8 @@ async def export_csv(
                 w.media_type,
                 "" if w.rating is None else w.rating,
                 w.status,
+                w.watched_on or "",
+                w.review or "",
                 w.tmdb_id,
             ]
         )

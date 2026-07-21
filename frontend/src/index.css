@@ -1796,6 +1796,111 @@ select {
   color: var(--accent);
 }
 
+.mutual-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Diario ── */
+.diary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 680px;
+}
+
+.diary-entry {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.diary-date {
+  flex-shrink: 0;
+  width: 96px;
+  padding-top: 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.diary-card {
+  flex: 1;
+  display: flex;
+  gap: 14px;
+  text-align: left;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.diary-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+
+.diary-poster {
+  width: 46px;
+  height: 69px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.diary-poster-empty {
+  background: var(--bg-surface);
+}
+
+.diary-body {
+  min-width: 0;
+}
+
+.diary-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.diary-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.diary-review-text {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .diary-entry {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .diary-date {
+    width: auto;
+    text-align: left;
+    padding-top: 0;
+  }
+}
+
 /* Affinità di gusti (sul profilo) */
 .compat {
   display: flex;

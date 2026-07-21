@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut, Menu } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut, Menu, BookOpen } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -8,6 +8,7 @@ import DiscoverPage from './pages/DiscoverPage';
 import WatchedPage from './pages/WatchedPage';
 import WatchlistPage from './pages/WatchlistPage';
 import StatsPage from './pages/StatsPage';
+import DiaryPage from './pages/DiaryPage';
 import CalendarPage from './pages/CalendarPage';
 import ListsPage from './pages/ListsPage';
 import ListDetailPage from './pages/ListDetailPage';
@@ -241,6 +242,7 @@ function AuthenticatedApp() {
     { to: '/', icon: TrendingUp, label: 'Scopri' },
     { to: '/search', icon: Search, label: 'Cerca' },
     { to: '/watched', icon: BookmarkCheck, label: 'Visti' },
+    { to: '/diary', icon: BookOpen, label: 'Diario' },
     { to: '/watchlist', icon: Bookmark, label: 'Da vedere' },
     { to: '/lists', icon: ListChecks, label: 'Liste' },
     { to: '/calendar', icon: CalendarDays, label: 'In arrivo' },
@@ -318,6 +320,7 @@ function AuthenticatedApp() {
             <Route path="/" element={<DiscoverPage />} />
             <Route path="/search" element={<DiscoverPage searchMode />} />
             <Route path="/watched" element={<WatchedPage />} />
+            <Route path="/diary" element={<DiaryPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/stats" element={<StatsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
