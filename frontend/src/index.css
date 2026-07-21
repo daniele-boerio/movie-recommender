@@ -1367,6 +1367,98 @@ select {
   margin-bottom: 18px;
 }
 
+/* ── Calendario "In arrivo" ── */
+.cal-group {
+  margin-bottom: 28px;
+}
+
+.cal-month {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.cal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+}
+
+.cal-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.cal-row:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+
+.cal-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 42px;
+  flex-shrink: 0;
+}
+
+.cal-date-day {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cal-date-wd {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.cal-poster {
+  width: 40px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.cal-poster-empty {
+  background: var(--bg-surface);
+}
+
+.cal-info {
+  min-width: 0;
+}
+
+.cal-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
 /* ── Detail Modal ── */
 .modal-overlay {
   position: fixed;

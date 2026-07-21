@@ -213,6 +213,10 @@ export const api = {
   getStats: () =>
     request('/stats'),
 
+  // Calendario uscite (dai titoli in watchlist)
+  getCalendar: () =>
+    request('/calendar'),
+
   // Import CSV (batch di righe già normalizzate)
   importCsv: (items) =>
     request('/import/csv', { method: 'POST', body: JSON.stringify({ items }) }),

@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from .rate_limit import limiter
 from .routers import (
     auth,
+    calendar,
     imports,
     progress,
     recommendations,
@@ -49,4 +50,5 @@ app.include_router(watchlist.router)
 app.include_router(progress.router)
 app.include_router(stats.router)
 app.include_router(imports.router)
+app.include_router(calendar.router)
 app.include_router(recommendations.router)
