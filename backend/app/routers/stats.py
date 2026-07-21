@@ -77,6 +77,22 @@ async def get_stats(
             month_counter[r.added_at.strftime("%Y-%m")] += 1
     timeline = [{"month": mth, "count": month_counter.get(mth, 0)} for mth in _last_months(12)]
 
+    # Distribuzione dei voti personali: sempre 10 barre (1-10), anche a zero, così il
+    # grafico ha una forma stabile e i buchi si vedono.
+    rating_dist: Counter = Counter(r.rating for r in rows if r.rating)
+    rating_distribution = [
+        {"rating": i, "count": rating_dist.get(i, 0)} for i in range(1, 11)
+    ]
+
+    # Distribuzione per decennio d'uscita (dal release_date salvato, "YYYY-...").
+    decade_counter: Counter = Counter()
+    for r in rows:
+        if r.release_date and r.release_date[:4].isdigit():
+            decade_counter[(int(r.release_date[:4]) // 10) * 10] += 1
+    decades = [
+        {"decade": d, "count": c} for d, c in sorted(decade_counter.items())
+    ]
+
     return {
         "total": {"movie": movie, "tv": tv, "all": movie + tv},
         "avg_rating": avg_rating,
@@ -84,4 +100,6 @@ async def get_stats(
         "top_rated": top_rated,
         "genres": genres,
         "timeline": timeline,
+        "rating_distribution": rating_distribution,
+        "decades": decades,
     }

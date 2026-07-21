@@ -31,11 +31,19 @@ export default function StatsPage() {
     () => Math.max(1, ...(stats?.timeline || []).map((t) => t.count)),
     [stats]
   );
+  const maxRatingBar = useMemo(
+    () => Math.max(1, ...(stats?.rating_distribution || []).map((r) => r.count)),
+    [stats]
+  );
+  const maxDecade = useMemo(
+    () => Math.max(1, ...(stats?.decades || []).map((d) => d.count)),
+    [stats]
+  );
 
   if (loading) return <div className="spinner" />;
   if (!stats) return null;
 
-  const { total, avg_rating, rated_count, top_rated, genres, timeline } = stats;
+  const { total, avg_rating, rated_count, top_rated, genres, timeline, rating_distribution, decades } = stats;
 
   if (total.all === 0) {
     return (
@@ -154,6 +162,47 @@ export default function StatsPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="stats-grid">
+        {/* Distribuzione dei voti personali */}
+        {rated_count > 0 && (
+          <div className="stats-card">
+            <h3 className="stats-card-title">Come voti</h3>
+            <div className="timeline">
+              {(rating_distribution || []).map((r) => (
+                <div className="timeline-col" key={r.rating} title={`${r.count} titoli con voto ${r.rating}`}>
+                  <div className="timeline-bar-wrap">
+                    <div
+                      className="timeline-bar"
+                      style={{ height: `${(r.count / maxRatingBar) * 100}%` }}
+                    />
+                  </div>
+                  <span className="timeline-count">{r.count || ''}</span>
+                  <span className="timeline-label">{r.rating}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Decenni d'uscita */}
+        {decades && decades.length > 0 && (
+          <div className="stats-card">
+            <h3 className="stats-card-title">Da che epoca guardi</h3>
+            <div className="bar-list">
+              {decades.map((d) => (
+                <div className="bar-row" key={d.decade}>
+                  <span className="bar-label">{d.decade}s</span>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${(d.count / maxDecade) * 100}%` }} />
+                  </div>
+                  <span className="bar-value">{d.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

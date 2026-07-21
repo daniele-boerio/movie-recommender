@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Bookmark, BookmarkPlus, BookmarkCheck, Star, ExternalLink, Play, Tv } from 'lucide-react';
 import { api, posterUrl, backdropUrl } from '../api';
 import { useApp } from '../App';
@@ -7,6 +8,7 @@ import EpisodeTracker from './EpisodeTracker';
 
 export default function DetailModal({ item, onClose }) {
   const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, watchedMap, updateRating } = useApp();
+  const navigate = useNavigate();
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
@@ -117,11 +119,21 @@ export default function DetailModal({ item, onClose }) {
             {/* Overview */}
             {overview && <p className="modal-overview">{overview}</p>}
 
-            {/* Cast */}
+            {/* Cast (nomi cliccabili → scheda persona) */}
             {cast.length > 0 && (
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 20 }}>
                 <strong style={{ color: 'var(--text-primary)' }}>Cast:</strong>{' '}
-                {cast.map((c) => c.name).join(', ')}
+                {cast.map((c, i) => (
+                  <span key={c.id}>
+                    <button
+                      className="cast-link"
+                      onClick={() => { onClose(); navigate(`/person/${c.id}`); }}
+                    >
+                      {c.name}
+                    </button>
+                    {i < cast.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
               </p>
             )}
 

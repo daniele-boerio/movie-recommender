@@ -58,6 +58,14 @@ async def details(media_type: str, tmdb_id: int):
     return data
 
 
+@router.get("/person/{person_id}")
+async def person(person_id: int):
+    """Scheda di una persona (attore/regista) con tutti i suoi film e serie."""
+    return await tmdb_get(
+        f"/person/{person_id}", {"append_to_response": "combined_credits"}
+    )
+
+
 @router.get("/tv/{tmdb_id}/season/{season_number}")
 async def tv_season(tmdb_id: int, season_number: int):
     """Episodi di una stagione (per il tracking episodio-per-episodio)."""

@@ -11,11 +11,13 @@ import StatsPage from './pages/StatsPage';
 import ImportPage from './pages/ImportPage';
 import SettingsPage from './pages/SettingsPage';
 import RecommendationsPage from './pages/RecommendationsPage';
+import PersonPage from './pages/PersonPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DetailModal from './components/DetailModal';
 import Toast from './components/Toast';
+import ThemeToggle from './components/ThemeToggle';
 
 // ── Global context ──
 const AppContext = createContext();
@@ -249,6 +251,7 @@ function AuthenticatedApp() {
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <span className="sidebar-username" title={user.email}>{user.username}</span>
+              <ThemeToggle />
               <NavLink to="/settings" className="sidebar-logout sidebar-settings" title="Impostazioni">
                 <Settings size={15} />
               </NavLink>
@@ -271,6 +274,7 @@ function AuthenticatedApp() {
             <Route path="/import" element={<ImportPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />
+            <Route path="/person/:id" element={<PersonPage />} />
             {/* Già autenticati: /login e /register non hanno più senso */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -147,6 +147,9 @@ export const api = {
   details: (mediaType, id) =>
     request(`/details/${mediaType}/${id}`),
 
+  person: (id) =>
+    request(`/person/${id}`),
+
   tvSeason: (tmdbId, seasonNumber) =>
     request(`/tv/${tmdbId}/season/${seasonNumber}`),
 

@@ -40,6 +40,36 @@
   --shadow-popup: 0 8px 30px rgba(0, 0, 0, 0.5);
 
   --transition: 200ms ease;
+
+  color-scheme: dark;
+}
+
+/* Tema chiaro: stesso accento ambra (leggermente più scuro per il contrasto su fondo
+   chiaro), fondali chiari e testi scuri. Attivato dal toggle via data-theme su <html>. */
+:root[data-theme='light'] {
+  --bg-primary: #f4f3f8;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0eef6;
+  --bg-surface: #f3f1f8;
+  --border: #e3e0ec;
+  --border-light: #d3cfe1;
+
+  --text-primary: #1b1a26;
+  --text-secondary: #56526a;
+  --text-muted: #8b8898;
+
+  --accent: #b7791f;
+  --accent-hover: #9a6417;
+  --accent-soft: rgba(183, 121, 31, 0.12);
+
+  --success: #16a34a;
+  --danger: #dc2626;
+
+  --shadow-card: 0 2px 12px rgba(20, 18, 40, 0.08);
+  --shadow-popup: 0 8px 30px rgba(20, 18, 40, 0.18);
+
+  color-scheme: light;
 }
 
 html {
@@ -1262,6 +1292,79 @@ select {
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* Nomi del cast cliccabili */
+.cast-link {
+  color: var(--text-secondary);
+  padding: 0;
+  border-bottom: 1px dotted transparent;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.cast-link:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Scheda persona ── */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  transition: color var(--transition);
+}
+
+.back-btn:hover {
+  color: var(--text-primary);
+}
+
+.person-header {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.person-photo {
+  width: 150px;
+  height: 225px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-card);
+}
+
+.person-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+.person-info {
+  flex: 1;
+  min-width: 260px;
+}
+
+.person-bio {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 18px;
 }
 
 /* ── Detail Modal ── */
