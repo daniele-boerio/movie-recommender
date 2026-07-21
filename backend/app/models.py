@@ -107,6 +107,49 @@ class Watched(Base):
     )
 
 
+class CustomList(Base):
+    """Una lista tematica creata dall'utente ("Film di Natale", "Da vedere con lei")."""
+
+    __tablename__ = "custom_lists"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ListItem(Base):
+    """Un titolo dentro una lista personalizzata. Salviamo il minimo per disegnare la
+    card senza richiamare TMDB; il dettaglio completo lo carica il modal all'apertura."""
+
+    __tablename__ = "list_items"
+
+    id = Column(Integer, primary_key=True)
+    list_id = Column(
+        Integer,
+        ForeignKey("custom_lists.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tmdb_id = Column(Integer, nullable=False)
+    media_type = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    poster_path = Column(String)
+    vote_average = Column(Float)
+    release_date = Column(String)
+    added_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        # Un titolo una volta sola per lista.
+        UniqueConstraint("list_id", "tmdb_id", "media_type", name="uq_list_item"),
+        CheckConstraint(
+            "media_type IN ('movie','tv')", name="ck_list_item_media_type"
+        ),
+    )
+
+
 class EpisodeProgress(Base):
     """Un singolo episodio visto da un utente per una serie TV (o anime).
 

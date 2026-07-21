@@ -18,6 +18,7 @@ from .routers import (
     auth,
     calendar,
     imports,
+    lists,
     progress,
     recommendations,
     search,
@@ -51,4 +52,5 @@ app.include_router(progress.router)
 app.include_router(stats.router)
 app.include_router(imports.router)
 app.include_router(calendar.router)
+app.include_router(lists.router)
 app.include_router(recommendations.router)

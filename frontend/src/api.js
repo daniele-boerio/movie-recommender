@@ -224,6 +224,28 @@ export const api = {
   getCalendar: () =>
     request('/calendar'),
 
+  // Liste personalizzate
+  getLists: () =>
+    request('/lists'),
+
+  createList: (name) =>
+    request('/lists', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  getList: (id) =>
+    request(`/lists/${id}`),
+
+  renameList: (id, name) =>
+    request(`/lists/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+
+  deleteList: (id) =>
+    request(`/lists/${id}`, { method: 'DELETE' }),
+
+  addToList: (id, item) =>
+    request(`/lists/${id}/items`, { method: 'POST', body: JSON.stringify(item) }),
+
+  removeFromList: (id, tmdbId, mediaType) =>
+    request(`/lists/${id}/items/${tmdbId}/${mediaType}`, { method: 'DELETE' }),
+
   // Import CSV (batch di righe già normalizzate)
   importCsv: (items) =>
     request('/import/csv', { method: 'POST', body: JSON.stringify({ items }) }),

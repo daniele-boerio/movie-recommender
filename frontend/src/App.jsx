@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, Settings, LogOut } from 'lucide-react';
+import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Settings, LogOut } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -9,6 +9,8 @@ import WatchedPage from './pages/WatchedPage';
 import WatchlistPage from './pages/WatchlistPage';
 import StatsPage from './pages/StatsPage';
 import CalendarPage from './pages/CalendarPage';
+import ListsPage from './pages/ListsPage';
+import ListDetailPage from './pages/ListDetailPage';
 import ImportPage from './pages/ImportPage';
 import SettingsPage from './pages/SettingsPage';
 import RecommendationsPage from './pages/RecommendationsPage';
@@ -221,6 +223,7 @@ function AuthenticatedApp() {
     { to: '/search', icon: Search, label: 'Cerca' },
     { to: '/watched', icon: BookmarkCheck, label: 'Visti' },
     { to: '/watchlist', icon: Bookmark, label: 'Da vedere' },
+    { to: '/lists', icon: ListChecks, label: 'Liste' },
     { to: '/calendar', icon: CalendarDays, label: 'In arrivo' },
     { to: '/recommendations', icon: Sparkles, label: 'Per te' },
     { to: '/stats', icon: BarChart3, label: 'Statistiche' },
@@ -274,6 +277,8 @@ function AuthenticatedApp() {
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/stats" element={<StatsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/lists" element={<ListsPage />} />
+            <Route path="/lists/:id" element={<ListDetailPage />} />
             <Route path="/import" element={<ImportPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/recommendations" element={<RecommendationsPage />} />

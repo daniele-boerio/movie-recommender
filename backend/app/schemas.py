@@ -33,6 +33,25 @@ class WatchedPatch(BaseModel):
     watched_on: str | None = None
 
 
+# --- Liste personalizzate ---
+
+class ListCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class ListRename(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class ListItemAdd(BaseModel):
+    tmdb_id: int
+    media_type: str  # "movie" | "tv"
+    title: str
+    poster_path: str | None = None
+    vote_average: float | None = None
+    release_date: str | None = None
+
+
 # --- Auth ---
 
 class RegisterRequest(BaseModel):

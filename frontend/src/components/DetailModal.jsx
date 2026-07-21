@@ -5,6 +5,7 @@ import { api, posterUrl, backdropUrl } from '../api';
 import { useApp } from '../App';
 import StarRating from './StarRating';
 import EpisodeTracker from './EpisodeTracker';
+import AddToListMenu from './AddToListMenu';
 
 export default function DetailModal({ item, onClose }) {
   const { isWatched, isInWatchlist, toggleWatched, toggleWatchlist, watchedMap, updateRating, reloadLists, addToast } = useApp();
@@ -249,6 +250,18 @@ export default function DetailModal({ item, onClose }) {
                 <ExternalLink size={16} /> TMDB
               </a>
             </div>
+
+            {/* Aggiungi a una lista personalizzata */}
+            <AddToListMenu
+              item={{
+                tmdb_id: tmdbId,
+                media_type: mediaType,
+                title,
+                poster_path: details?.poster_path || item.poster_path,
+                vote_average: vote,
+                release_date: date,
+              }}
+            />
 
             {/* Personal rating */}
             {watched && (

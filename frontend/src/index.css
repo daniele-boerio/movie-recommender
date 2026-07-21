@@ -1520,6 +1520,171 @@ select {
   color: var(--text-secondary);
 }
 
+/* ── Liste personalizzate ── */
+.list-create {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+  max-width: 560px;
+}
+
+.list-create .auth-input {
+  margin-bottom: 0;
+}
+
+.list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px;
+}
+
+.list-card {
+  text-align: left;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.list-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+
+.list-card-covers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  aspect-ratio: 3 / 2;
+  background: var(--bg-surface);
+}
+
+.list-card-covers img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Con un solo poster, riempie tutta l'anteprima */
+.list-card-covers img:only-child {
+  grid-column: 1 / -1;
+}
+
+.list-card-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.list-card-name {
+  font-weight: 600;
+  padding: 12px 14px 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-card-count {
+  padding: 0 14px 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.list-rename {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.list-rename .auth-input {
+  margin-bottom: 0;
+}
+
+.icon-btn {
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.icon-btn:hover {
+  color: var(--accent);
+}
+
+.list-item-wrap {
+  position: relative;
+}
+
+.list-remove {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  transition: background var(--transition);
+}
+
+.list-remove:hover {
+  background: var(--danger);
+}
+
+/* ── Menu "aggiungi a lista" (dentro il DetailModal) ── */
+.addlist {
+  margin-bottom: 24px;
+}
+
+.addlist-panel {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.addlist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.addlist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: background var(--transition);
+}
+
+.addlist-row:hover {
+  background: var(--bg-card-hover);
+}
+
+.addlist-check {
+  color: var(--success);
+}
+
+.addlist-new {
+  display: flex;
+  gap: 8px;
+}
+
+.addlist-new .auth-input {
+  margin-bottom: 0;
+}
+
 /* ── Detail Modal ── */
 .modal-overlay {
   position: fixed;
