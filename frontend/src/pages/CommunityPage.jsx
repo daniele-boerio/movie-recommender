@@ -1,18 +1,33 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Search, UserPlus, UserCheck } from 'lucide-react';
-import { api } from '../api';
+import { Users, Search, UserPlus, UserCheck, Star } from 'lucide-react';
+import { api, posterUrl } from '../api';
 import { useApp } from '../App';
 
+// "2026-07-20T…" → "oggi" / "ieri" / "N giorni fa"
+const relTime = (iso) => {
+  if (!iso) return '';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return 'oggi';
+  if (days === 1) return 'ieri';
+  if (days < 30) return `${days} giorni fa`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? '1 mese fa' : `${months} mesi fa`;
+};
+
 export default function CommunityPage() {
-  const { addToast } = useApp();
+  const { addToast, setSelectedItem } = useApp();
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
   const [following, setFollowing] = useState([]);
+  const [feed, setFeed] = useState([]);
 
   const loadFollowing = () => api.getFollowing().then(setFollowing).catch(() => setFollowing([]));
 
-  useEffect(() => { loadFollowing(); }, []);
+  useEffect(() => {
+    loadFollowing();
+    api.getFeed().then(setFeed).catch(() => setFeed([]));
+  }, []);
 
   // Ricerca "as you type" con un piccolo debounce: da 2 caratteri in su.
   useEffect(() => {
@@ -78,6 +93,38 @@ export default function CommunityPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {feed.length > 0 && (
+        <>
+          <h2 className="section-title" style={{ marginTop: 32 }}>Attività recente</h2>
+          <div className="feed-list">
+            {feed.map((ev, i) => (
+              <button
+                className="feed-row"
+                key={`${ev.username}-${ev.tmdb_id}-${ev.media_type}-${i}`}
+                onClick={() => setSelectedItem({ ...ev, id: ev.tmdb_id })}
+              >
+                {posterUrl(ev.poster_path, 'w92') ? (
+                  <img className="feed-poster" src={posterUrl(ev.poster_path, 'w92')} alt="" />
+                ) : (
+                  <div className="feed-poster feed-poster-empty" />
+                )}
+                <div className="feed-info">
+                  <div className="feed-text">
+                    <strong>{ev.username}</strong> ha visto <strong>{ev.title}</strong>
+                  </div>
+                  <div className="feed-meta">
+                    {ev.rating != null && (
+                      <span className="feed-rating"><Star size={12} fill="currentColor" /> {ev.rating}</span>
+                    )}
+                    <span>{relTime(ev.added_at)}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       <h2 className="section-title" style={{ marginTop: 32 }}>Chi segui</h2>

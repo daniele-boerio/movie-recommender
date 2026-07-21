@@ -150,3 +150,35 @@ def my_following(
         .all()
     )
     return [{"id": u.id, "username": u.username} for u in rows]
+
+
+@router.get("/social/feed")
+def feed(
+    limit: int = Query(40, ge=1, le=100),
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """Attività recente di chi seguo: i loro ultimi titoli segnati come visti."""
+    rows = (
+        db.query(Watched, User.username)
+        .join(Follow, Follow.following_id == Watched.user_id)
+        .join(User, User.id == Watched.user_id)
+        .filter(Follow.follower_id == user_id, Watched.status == "watched")
+        .order_by(Watched.added_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "username": uname,
+            "tmdb_id": w.tmdb_id,
+            "media_type": w.media_type,
+            "title": w.title,
+            "poster_path": w.poster_path,
+            "vote_average": w.vote_average,
+            "release_date": w.release_date,
+            "rating": w.rating,
+            "added_at": w.added_at.isoformat() if w.added_at else None,
+        }
+        for w, uname in rows
+    ]

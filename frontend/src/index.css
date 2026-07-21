@@ -1667,6 +1667,71 @@ select {
   color: var(--accent);
 }
 
+/* Feed attività */
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 640px;
+  margin-top: 16px;
+}
+
+.feed-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.feed-row:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+
+.feed-poster {
+  width: 38px;
+  height: 57px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.feed-poster-empty {
+  background: var(--bg-surface);
+}
+
+.feed-info {
+  min-width: 0;
+}
+
+.feed-text {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.feed-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.feed-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Voto personale mostrato sulla card (es. sul profilo di un altro utente) */
 .media-card-userrating {
   display: inline-flex;

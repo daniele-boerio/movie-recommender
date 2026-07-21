@@ -269,6 +269,9 @@ export const api = {
   getFollowing: () =>
     request('/social/following'),
 
+  getFeed: (limit = 40) =>
+    request(`/social/feed?limit=${limit}`),
+
   // Recommendations
   getRecommendations: (limit = 20) =>
     request(`/recommendations?limit=${limit}`),
