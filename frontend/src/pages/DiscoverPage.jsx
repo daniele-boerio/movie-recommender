@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, TrendingUp, SlidersHorizontal, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, TrendingUp, SlidersHorizontal, X, User, Building2, Tag } from 'lucide-react';
 import { api } from '../api';
 import MediaCard from '../components/MediaCard';
 
@@ -11,13 +12,14 @@ const SORTS = [
 
 const VOTE_OPTIONS = [0, 5, 6, 7, 8, 9];
 
-export default function DiscoverPage({ searchMode = false }) {
+export default function DiscoverPage() {
   const [query, setQuery] = useState('');
   const [mediaFilter, setMediaFilter] = useState('all');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [matched, setMatched] = useState(null); // entità riconosciute nella query
   const searchTimeout = useRef(null);
 
   // Filtri avanzati
@@ -35,6 +37,9 @@ export default function DiscoverPage({ searchMode = false }) {
 
   const filtersActive =
     selectedGenres.length > 0 || !!yearFrom || !!yearTo || voteMin > 0 || sortBy !== 'popularity.desc';
+
+  const hasMatches =
+    !!matched && (matched.people?.length || matched.companies?.length || matched.keywords?.length) > 0;
 
   const isAnime = (it) => (it.genre_ids || []).includes(16) && it.original_language === 'ja';
   const yearOf = (it) => {
@@ -70,7 +75,20 @@ export default function DiscoverPage({ searchMode = false }) {
     if (yearFrom) out = out.filter((it) => { const y = yearOf(it); return y != null && y >= +yearFrom; });
     if (yearTo) out = out.filter((it) => { const y = yearOf(it); return y != null && y <= +yearTo; });
     if (voteMin > 0) out = out.filter((it) => (it.vote_average || 0) >= voteMin);
-    return clientSort(out);
+    // Sull'ordinamento di default teniamo quello del backend: è per pertinenza
+    // (prima i titoli, poi la filmografia / il catalogo dello studio / il tema).
+    return sortBy === 'popularity.desc' ? out : clientSort(out);
+  };
+
+  // Lo stesso titolo può arrivare da più fonti (e da più pagine): una volta sola.
+  const dedupe = (list) => {
+    const seen = new Set();
+    return list.filter((it) => {
+      const key = `${it.media_type}-${it.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   };
 
   const clientSort = (list) => {
@@ -102,6 +120,7 @@ export default function DiscoverPage({ searchMode = false }) {
 
   async function load(p = 1, append = false) {
     setLoading(true);
+    if (!query.trim()) setMatched(null);
     try {
       let list = [];
       let total = 1;
@@ -114,16 +133,11 @@ export default function DiscoverPage({ searchMode = false }) {
         if (mediaFilter === 'anime') raw = raw.filter(isAnime);
         list = applyClientFilters(raw);
         total = data.total_pages || 1;
+        setMatched(data.matched || null);
       } else if (filtersActive) {
         const data = await api.discover(effectiveType, buildDiscoverParams(effectiveType, p));
         list = data.results || [];
         total = data.total_pages || 1;
-      } else if (searchMode) {
-        // Cerca senza testo e senza filtri: niente da mostrare.
-        setResults([]);
-        setTotalPages(1);
-        setLoading(false);
-        return;
       } else if (mediaFilter === 'anime') {
         const data = await api.discover('tv', {
           with_genres: 16, with_original_language: 'ja', sort_by: 'popularity.desc', page: p,
@@ -136,7 +150,7 @@ export default function DiscoverPage({ searchMode = false }) {
         total = data.total_pages || 1;
       }
 
-      setResults((prev) => (append ? [...prev, ...list] : list));
+      setResults((prev) => dedupe(append ? [...prev, ...list] : list));
       setTotalPages(total);
       setPage(p);
     } catch {
@@ -165,11 +179,10 @@ export default function DiscoverPage({ searchMode = false }) {
   return (
     <>
       <div className="page-header">
-        <h1 className="page-title">{searchMode ? 'Cerca' : 'Scopri'}</h1>
+        <h1 className="page-title">Scopri</h1>
         <p className="page-subtitle">
-          {searchMode
-            ? 'Trova film, serie TV e anime da aggiungere alla tua lista'
-            : 'I titoli più popolari — o filtra per trovare qualcosa di preciso'}
+          Cerca per titolo, attore, regista, studio (“marvel”) o tema (“zombie”) —
+          oppure lascia il campo vuoto e sfoglia i più popolari
         </p>
       </div>
 
@@ -178,12 +191,36 @@ export default function DiscoverPage({ searchMode = false }) {
         <Search className="search-icon" />
         <input
           type="text"
-          placeholder="Cerca film, serie TV o anime..."
+          placeholder="Titolo, attore, regista, studio o tema…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          autoFocus={searchMode}
         />
       </div>
+
+      {/* Perché stiamo mostrando anche quei titoli */}
+      {query.trim() && hasMatches && (
+        <div className="search-hints">
+          <span className="search-hints-label">Trovati anche per</span>
+          {(matched.people || []).map((p) => (
+            <Link key={`p${p.id}`} to={`/person/${p.id}`} className="search-hint">
+              <User size={13} />
+              {p.known_for_department === 'Directing' ? `regia di ${p.name}` : p.name}
+            </Link>
+          ))}
+          {(matched.companies || []).map((c) => (
+            <span key={`c${c.id}`} className="search-hint">
+              <Building2 size={13} />
+              {c.name}
+            </span>
+          ))}
+          {(matched.keywords || []).map((k) => (
+            <span key={`k${k.id}`} className="search-hint">
+              <Tag size={13} />
+              {k.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Tabs + toggle filtri */}
       <div className="discover-controls">
@@ -308,10 +345,12 @@ export default function DiscoverPage({ searchMode = false }) {
               <p>Prova a cambiare ricerca o filtri</p>
             </>
           ) : (
+            // Senza query e senza filtri qui ci sono i di tendenza: se la lista è vuota
+            // è TMDB che non ha risposto, non l'utente che non ha ancora cercato.
             <>
               <TrendingUp className="empty-state-icon" />
-              <h3>Cerca qualcosa</h3>
-              <p>Digita il titolo di un film, una serie TV o un anime</p>
+              <h3>Non riesco a caricare i titoli di tendenza</h3>
+              <p>Riprova tra poco, oppure cerca direttamente un titolo, un attore o un tema</p>
             </>
           )}
         </div>

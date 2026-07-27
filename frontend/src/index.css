@@ -27,6 +27,7 @@
 
   --success: #4ade80;
   --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
 
   /* Type */
   --font-display: 'Playfair Display', Georgia, serif;
@@ -65,6 +66,7 @@
 
   --success: #16a34a;
   --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.10);
 
   --shadow-card: 0 2px 12px rgba(20, 18, 40, 0.08);
   --shadow-popup: 0 8px 30px rgba(20, 18, 40, 0.18);
@@ -305,6 +307,47 @@ select {
   height: 20px;
 }
 
+/* ── Search hints (persone / studi / temi riconosciuti nella query) ── */
+.search-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -16px 0 22px;
+}
+
+.search-hints-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  text-decoration: none;
+}
+
+.search-hint svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+a.search-hint:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
 /* ── Filter Tabs ── */
 .filter-tabs {
   display: flex;
@@ -416,6 +459,24 @@ select {
   background: var(--accent);
   color: var(--bg-primary);
   border-color: var(--accent);
+}
+
+/* Chip di *esclusione* (consigli): selezionato = "non voglio vederlo", quindi non
+   l'accento ambra — che qui leggeremmo come "sì, questo". */
+.genre-chip.excluded {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.active-chip.excluded {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.active-chip.excluded:hover {
+  border-color: var(--danger);
 }
 
 .year-range {

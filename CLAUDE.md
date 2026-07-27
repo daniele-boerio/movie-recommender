@@ -49,7 +49,9 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       ├── rate_limit.py       # slowapi
 │       ├── tmdb.py             # tmdb_get
 │       ├── routers/            # auth, search, watched, watchlist, progress, stats, recommendations
-│       └── services/recommender.py
+│       └── services/
+│           ├── recommender.py
+│           └── smart_search.py # ricerca per persona / studio / tema, non solo per titolo
 ├── frontend/
 │   ├── Dockerfile              # Multi-stage: node build → nginx serve
 │   ├── nginx.conf              # Proxies /api → backend:8000
@@ -123,4 +125,5 @@ Push to `daniele-boerio/movie-recommender:main` → Coolify auto-deploys via Doc
 - **Add a new page:** create in `frontend/src/pages/`, add Route in `App.jsx`, add NavLink in sidebar.
 - **Add a new component:** create in `frontend/src/components/`, use `useApp()` for global state access.
 - **Change styles:** edit CSS variables at `:root` in `index.css` for theme changes, or add classes below.
-- **Change recommendation logic:** edit the `get_recommendations()` function in `backend/main.py`.
+- **Change recommendation logic:** edit `build_recommendations()` in `backend/app/services/recommender.py`
+  (i filtri utente stanno in `RecFilters` nello stesso file, e vanno applicati **prima** della classifica).

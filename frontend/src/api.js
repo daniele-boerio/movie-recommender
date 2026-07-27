@@ -292,8 +292,14 @@ export const api = {
     request('/notifications/read', { method: 'POST' }),
 
   // Recommendations
-  getRecommendations: (limit = 20) =>
-    request(`/recommendations?limit=${limit}`),
+  // I filtri vuoti/falsi non si mandano: il backend ha già i suoi default.
+  getRecommendations: (limit = 20, filters = {}) => {
+    const params = new URLSearchParams({ limit });
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== '' && v != null && v !== false) params.set(k, v);
+    }
+    return request(`/recommendations?${params}`);
+  },
 };
 
 // Image URL helper

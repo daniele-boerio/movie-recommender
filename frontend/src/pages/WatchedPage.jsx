@@ -62,7 +62,7 @@ export default function WatchedPage() {
         <div className="empty-state">
           <BookmarkCheck className="empty-state-icon" />
           <h3>La tua lista è vuota</h3>
-          <p>Vai alla sezione Scopri o Cerca per aggiungere film e serie TV che hai già visto</p>
+          <p>Vai alla sezione Scopri per aggiungere film e serie TV che hai già visto</p>
           <Link to="/import" className="btn btn-secondary" style={{ marginTop: 16 }}>
             <Upload size={15} /> Importa da CSV
           </Link>

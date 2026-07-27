@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Query
 
+from ..services.smart_search import search_titles, smart_search
 from ..tmdb import tmdb_get
 
 router = APIRouter(prefix="/api", tags=["Search"])
@@ -12,20 +13,19 @@ async def search(
     q: str = Query(..., min_length=1),
     media_type: str = Query("multi", pattern="^(movie|tv|multi)$"),
     page: int = Query(1, ge=1),
+    smart: bool = Query(True),
 ):
-    """Cerca film / serie su TMDB."""
-    if media_type == "multi":
-        data = await tmdb_get("/search/multi", {"query": q, "page": page})
-        # /search/multi restituisce anche le persone: le scartiamo
-        data["results"] = [
-            r for r in data.get("results", [])
-            if r.get("media_type") in ("movie", "tv")
-        ]
-    else:
-        data = await tmdb_get(f"/search/{media_type}", {"query": q, "page": page})
-        for r in data.get("results", []):
-            r["media_type"] = media_type
-    return data
+    """Cerca film / serie su TMDB.
+
+    Di default la ricerca è "intelligente": riconosce anche attori, registi, case di
+    produzione e temi (vedi `services/smart_search`). Con `smart=false` resta la sola
+    ricerca per titolo.
+    """
+    if smart:
+        return await smart_search(q, media_type, page)
+
+    results, total_pages = await search_titles(q, media_type, page)
+    return {"page": page, "results": results, "total_pages": total_pages, "matched": {}}
 
 
 @router.get("/trending")

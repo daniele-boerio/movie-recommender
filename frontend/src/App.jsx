@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Search, Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut, Menu, BookOpen } from 'lucide-react';
+import { Film, Bookmark, BookmarkCheck, Sparkles, TrendingUp, BarChart3, CalendarDays, ListChecks, Users, Bell, Settings, LogOut, Menu, BookOpen } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 
@@ -240,7 +240,6 @@ function AuthenticatedApp() {
 
   const navLinks = [
     { to: '/', icon: TrendingUp, label: 'Scopri' },
-    { to: '/search', icon: Search, label: 'Cerca' },
     { to: '/watched', icon: BookmarkCheck, label: 'Visti' },
     { to: '/diary', icon: BookOpen, label: 'Diario' },
     { to: '/watchlist', icon: Bookmark, label: 'Da vedere' },
@@ -318,7 +317,9 @@ function AuthenticatedApp() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<DiscoverPage />} />
-            <Route path="/search" element={<DiscoverPage searchMode />} />
+            {/* "Cerca" era la stessa pagina di "Scopri": la barra di ricerca è lì.
+                Il redirect tiene in piedi i vecchi link e le PWA già installate. */}
+            <Route path="/search" element={<Navigate to="/" replace />} />
             <Route path="/watched" element={<WatchedPage />} />
             <Route path="/diary" element={<DiaryPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
