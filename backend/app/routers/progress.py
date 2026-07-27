@@ -1,7 +1,8 @@
 """Progresso episodi delle serie TV (e anime). Ogni riga appartiene a un utente.
 
-Slegato dalla lista "Visti": si può seguire una serie episodio per episodio senza
-segnarla come vista. Il frontend, a serie completata, propone di segnarla comunque.
+Segnare un episodio **tira dentro la serie** nella lista "Visti" (vedi
+`services/watch_sync`): una puntata basta. Il contrario non vale — togliere tutti gli
+episodi non rimuove la serie dai visti, perché lì possono esserci voto e recensione.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +13,7 @@ from ..auth import get_current_user_id
 from ..database import get_db
 from ..models import EpisodeProgress
 from ..schemas import EpisodeRef, SeasonMark
+from ..services.watch_sync import ensure_series_watched
 
 router = APIRouter(prefix="/api/progress", tags=["Episodes"])
 
@@ -43,7 +45,12 @@ async def mark_episode(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Segna un singolo episodio come visto. Idempotente: se c'è già, non fa nulla."""
+    """Segna un singolo episodio come visto, e con esso la serie.
+
+    Idempotente sull'episodio: se c'è già non lo riscrive. Il riallineamento della serie
+    lo facciamo lo stesso, così anche le serie seguite *prima* di questa regola entrano
+    nei visti al primo episodio segnato.
+    """
     exists = (
         db.query(EpisodeProgress.id)
         .filter(
@@ -54,23 +61,22 @@ async def mark_episode(
         )
         .first()
     )
-    if exists:
-        return {"ok": True}
-
-    db.add(
-        EpisodeProgress(
-            user_id=user_id,
-            tmdb_id=tmdb_id,
-            season_number=ep.season_number,
-            episode_number=ep.episode_number,
+    if not exists:
+        db.add(
+            EpisodeProgress(
+                user_id=user_id,
+                tmdb_id=tmdb_id,
+                season_number=ep.season_number,
+                episode_number=ep.episode_number,
+            )
         )
-    )
-    try:
-        db.commit()
-    except IntegrityError:
-        # Doppio click in parallelo: il vincolo UNIQUE regge, per noi è comunque "ok".
-        db.rollback()
-    return {"ok": True}
+        try:
+            db.commit()
+        except IntegrityError:
+            # Doppio click in parallelo: il vincolo UNIQUE regge, per noi è comunque "ok".
+            db.rollback()
+
+    return {"ok": True, "series": await ensure_series_watched(db, user_id, tmdb_id)}
 
 
 @router.delete("/{tmdb_id}/episode/{season_number}/{episode_number}")
@@ -124,7 +130,11 @@ async def mark_season(
             db.commit()
         except IntegrityError:
             db.rollback()
-    return {"ok": True, "added": len(to_add)}
+
+    # `episode_numbers` non può essere vuoto (lo schema esige min_length=1): a questo
+    # punto almeno un episodio della stagione risulta visto, quindi la serie pure.
+    series = await ensure_series_watched(db, user_id, tmdb_id)
+    return {"ok": True, "added": len(to_add), "series": series}
 
 
 @router.delete("/{tmdb_id}/season/{season_number}")

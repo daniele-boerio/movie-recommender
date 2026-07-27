@@ -195,6 +195,11 @@ export default function DiscoverPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {query && (
+          <button className="search-clear" onClick={() => setQuery('')} aria-label="Cancella la ricerca">
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* Perché stiamo mostrando anche quei titoli */}

@@ -51,7 +51,8 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       ├── routers/            # auth, search, watched, watchlist, progress, stats, recommendations
 │       └── services/
 │           ├── recommender.py
-│           └── smart_search.py # ricerca per persona / studio / tema, non solo per titolo
+│           ├── smart_search.py # ricerca per persona / studio / tema, non solo per titolo
+│           └── watch_sync.py   # un episodio segnato porta la serie tra i "Visti"
 ├── frontend/
 │   ├── Dockerfile              # Multi-stage: node build → nginx serve
 │   ├── nginx.conf              # Proxies /api → backend:8000

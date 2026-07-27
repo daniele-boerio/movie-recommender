@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Search, UserPlus, UserCheck, Star, Film, Tv } from 'lucide-react';
+import { Users, Search, UserPlus, UserCheck, Star, Film, Tv, X } from 'lucide-react';
 import { api, posterUrl } from '../api';
 import { useApp } from '../App';
 
@@ -85,6 +85,11 @@ export default function CommunityPage() {
           onChange={(e) => setQ(e.target.value)}
           autoFocus
         />
+        {q && (
+          <button className="search-clear" onClick={() => setQ('')} aria-label="Cancella la ricerca">
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {results.length > 0 && (

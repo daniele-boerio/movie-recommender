@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bookmark, Search, Shuffle } from 'lucide-react';
+import { Bookmark, Search, Shuffle, X } from 'lucide-react';
 import { useApp } from '../App';
 import MediaCard from '../components/MediaCard';
 
@@ -74,6 +74,11 @@ export default function WatchlistPage() {
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
               />
+              {searchQ && (
+                <button className="search-clear" onClick={() => setSearchQ('')} aria-label="Cancella il filtro">
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
             <div className="filter-tabs">

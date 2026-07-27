@@ -311,12 +311,7 @@ export default function DetailModal({ item, onClose }) {
 
             {/* Episodi (serie TV e anime) */}
             {mediaType === 'tv' && details && (
-              <EpisodeTracker
-                tmdbId={tmdbId}
-                seasons={details.seasons}
-                watched={watched}
-                onMarkSeriesWatched={handleToggle}
-              />
+              <EpisodeTracker tmdbId={tmdbId} seasons={details.seasons} />
             )}
           </div>
         )}
