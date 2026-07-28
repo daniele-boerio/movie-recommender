@@ -277,6 +277,44 @@ select {
   margin-bottom: 28px;
 }
 
+/* Barra di ricerca appiccicata in alto: con la griglia lunga, per cercare di nuovo
+   bisognava risalire tutta la pagina. Scendendo si ritrae, risalendo ricompare.
+   Il fondo pieno serve perché le card le scorrono sotto: è largo quanto la colonna del
+   contenuto (le card non escono da lì), mentre il campo resta stretto come prima. */
+.search-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /* Il padding fa parte del fondo pieno, il margine no: servono entrambi, o le card
+     arriverebbero a filo del campo mentre ci scorrono sotto. */
+  padding: 12px 0 10px;
+  margin-bottom: 18px;
+  background: var(--bg-primary);
+  transition: transform var(--transition), opacity var(--transition);
+}
+
+.search-sticky .search-bar {
+  margin-bottom: 0;
+}
+
+.search-sticky.hidden {
+  transform: translateY(-130%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Chi preferisce meno movimento: la barra resta, semplicemente non si ritrae. */
+@media (prefers-reduced-motion: reduce) {
+  .search-sticky {
+    transition: none;
+  }
+  .search-sticky.hidden {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 .search-bar input {
   width: 100%;
   /* Spazio a destra per la X: senza, il testo lungo ci finisce sotto. */
@@ -336,7 +374,7 @@ select {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: -16px 0 22px;
+  margin: -6px 0 22px;
 }
 
 .search-hints-label {
@@ -2581,6 +2619,10 @@ a.search-hint:hover {
   .main-content {
     margin-left: 0;
     padding: 72px 16px 20px; /* spazio per la topbar fissa */
+  }
+  /* Si ferma sotto la topbar fissa, non sotto il bordo dello schermo. */
+  .search-sticky {
+    top: 56px;
   }
   .media-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));

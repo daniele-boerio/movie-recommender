@@ -138,8 +138,14 @@ export const api = {
     request('/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
 
   // Search & discovery
-  search: (q, mediaType = 'multi', page = 1) =>
-    request(`/search?q=${encodeURIComponent(q)}&media_type=${mediaType}&page=${page}`),
+  // I filtri viaggiano col resto: applicarli lato client svuotava le pagine.
+  search: (q, mediaType = 'multi', page = 1, filters = {}) => {
+    const params = new URLSearchParams({ q, media_type: mediaType, page });
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== '' && v != null && v !== false) params.set(k, v);
+    }
+    return request(`/search?${params}`);
+  },
 
   trending: (mediaType = 'all', page = 1) =>
     request(`/trending?media_type=${mediaType}&page=${page}`),

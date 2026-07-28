@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, TrendingUp, SlidersHorizontal, X, User, Building2, Tag } from 'lucide-react';
 import { api } from '../api';
+import { useHideOnScroll } from '../hooks';
 import MediaCard from '../components/MediaCard';
 
 const SORTS = [
@@ -21,6 +22,7 @@ export default function DiscoverPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [matched, setMatched] = useState(null); // entità riconosciute nella query
   const searchTimeout = useRef(null);
+  const barHidden = useHideOnScroll();
 
   // Filtri avanzati
   const [showFilters, setShowFilters] = useState(false);
@@ -41,11 +43,6 @@ export default function DiscoverPage() {
   const hasMatches =
     !!matched && (matched.people?.length || matched.companies?.length || matched.keywords?.length) > 0;
 
-  const isAnime = (it) => (it.genre_ids || []).includes(16) && it.original_language === 'ja';
-  const yearOf = (it) => {
-    const d = it.release_date || it.first_air_date || '';
-    return d ? parseInt(d.slice(0, 4), 10) : null;
-  };
   const genreName = (id) => {
     const all = [...(genresByType.movie || []), ...(genresByType.tv || [])];
     return all.find((g) => g.id === id)?.name || `#${id}`;
@@ -66,20 +63,6 @@ export default function DiscoverPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, mediaFilter, selectedGenres, yearFrom, yearTo, voteMin, sortBy]);
 
-  // I filtri genere/anno/voto applicati lato client (sui risultati di una ricerca testuale).
-  const applyClientFilters = (list) => {
-    let out = list;
-    if (selectedGenres.length) {
-      out = out.filter((it) => (it.genre_ids || []).some((g) => selectedGenres.includes(g)));
-    }
-    if (yearFrom) out = out.filter((it) => { const y = yearOf(it); return y != null && y >= +yearFrom; });
-    if (yearTo) out = out.filter((it) => { const y = yearOf(it); return y != null && y <= +yearTo; });
-    if (voteMin > 0) out = out.filter((it) => (it.vote_average || 0) >= voteMin);
-    // Sull'ordinamento di default teniamo quello del backend: è per pertinenza
-    // (prima i titoli, poi la filmografia / il catalogo dello studio / il tema).
-    return sortBy === 'popularity.desc' ? out : clientSort(out);
-  };
-
   // Lo stesso titolo può arrivare da più fonti (e da più pagine): una volta sola.
   const dedupe = (list) => {
     const seen = new Set();
@@ -91,12 +74,26 @@ export default function DiscoverPage() {
     });
   };
 
-  const clientSort = (list) => {
-    const arr = [...list];
-    if (sortBy === 'vote_average.desc') arr.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
-    else if (sortBy === 'date.desc') arr.sort((a, b) => (yearOf(b) || 0) - (yearOf(a) || 0));
-    else arr.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
-    return arr;
+  /** I filtri per la ricerca testuale, nel formato che si aspetta /api/search.
+   *
+   * Non filtriamo più lato client: il backend deve scartare i candidati *prima* di
+   * impaginare, altrimenti ogni "carica altri" riparte con una classifica sua e un
+   * titolo del 1990 spunta dopo uno del 2020. */
+  const buildSearchFilters = () => {
+    const genres = [...selectedGenres];
+    const f = {};
+    if (mediaFilter === 'anime') {
+      f.original_language = 'ja';
+      if (!genres.includes(16)) genres.push(16);
+    }
+    if (genres.length) f.genres = genres.join(',');
+    if (yearFrom) f.year_from = +yearFrom;
+    if (yearTo) f.year_to = +yearTo;
+    if (voteMin > 0) f.vote_min = voteMin;
+    // Cercando, il default non è "per popolarità" ma "per pertinenza": chi scrive un
+    // titolo esatto lo vuole per primo, non il film più popolare che gli somiglia.
+    if (sortBy !== 'popularity.desc') f.sort_by = sortBy;
+    return f;
   };
 
   const buildDiscoverParams = (type, p) => {
@@ -126,12 +123,9 @@ export default function DiscoverPage() {
       let total = 1;
 
       if (query.trim()) {
-        // Ricerca testuale: TMDB non filtra, quindi i filtri li applichiamo noi.
         const type = mediaFilter === 'all' ? 'multi' : mediaFilter === 'anime' ? 'tv' : mediaFilter;
-        const data = await api.search(query, type, p);
-        let raw = data.results || [];
-        if (mediaFilter === 'anime') raw = raw.filter(isAnime);
-        list = applyClientFilters(raw);
+        const data = await api.search(query, type, p, buildSearchFilters());
+        list = data.results || [];
         total = data.total_pages || 1;
         setMatched(data.matched || null);
       } else if (filtersActive) {
@@ -186,20 +180,22 @@ export default function DiscoverPage() {
         </p>
       </div>
 
-      {/* Search bar */}
-      <div className="search-bar">
-        <Search className="search-icon" />
-        <input
-          type="text"
-          placeholder="Titolo, attore, regista, studio o tema…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {query && (
-          <button className="search-clear" onClick={() => setQuery('')} aria-label="Cancella la ricerca">
-            <X size={16} />
-          </button>
-        )}
+      {/* Search bar: resta in alto mentre si scorre, si ritrae scendendo */}
+      <div className={`search-sticky ${barHidden ? 'hidden' : ''}`}>
+        <div className="search-bar">
+          <Search className="search-icon" />
+          <input
+            type="text"
+            placeholder="Titolo, attore, regista, studio o tema…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button className="search-clear" onClick={() => setQuery('')} aria-label="Cancella la ricerca">
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Perché stiamo mostrando anche quei titoli */}
@@ -298,7 +294,11 @@ export default function DiscoverPage() {
               <label>Ordina per</label>
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="filter-select">
                 {SORTS.map((s) => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
+                  <option key={s.key} value={s.key}>
+                    {/* Cercando, il default ordina per pertinenza: dirlo "più popolari"
+                        sarebbe una bugia, il titolo esatto viene comunque per primo. */}
+                    {s.key === 'popularity.desc' && query.trim() ? 'Più pertinenti' : s.label}
+                  </option>
                 ))}
               </select>
             </div>

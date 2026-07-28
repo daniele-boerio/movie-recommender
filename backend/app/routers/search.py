@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query
 
-from ..services.smart_search import search_titles, smart_search
+from ..services.smart_search import SearchFilters, search_titles, smart_search
 from ..tmdb import tmdb_get
 
 router = APIRouter(prefix="/api", tags=["Search"])
@@ -14,18 +14,41 @@ async def search(
     media_type: str = Query("multi", pattern="^(movie|tv|multi)$"),
     page: int = Query(1, ge=1),
     smart: bool = Query(True),
+    genres: str | None = Query(None, description="id dei generi, separati da virgola (in OR)"),
+    year_from: int | None = Query(None, ge=1900, le=2100),
+    year_to: int | None = Query(None, ge=1900, le=2100),
+    vote_min: float = Query(0, ge=0, le=10),
+    original_language: str | None = Query(None, max_length=8),
+    sort_by: str = Query("relevance"),
 ):
     """Cerca film / serie su TMDB.
 
     Di default la ricerca è "intelligente": riconosce anche attori, registi, case di
     produzione e temi (vedi `services/smart_search`). Con `smart=false` resta la sola
     ricerca per titolo.
-    """
-    if smart:
-        return await smart_search(q, media_type, page)
 
-    results, total_pages = await search_titles(q, media_type, page)
-    return {"page": page, "results": results, "total_pages": total_pages, "matched": {}}
+    I filtri si applicano qui e non nel frontend: filtrare lato client la singola pagina
+    la svuotava e spezzava l'ordinamento tra un "carica altri" e il successivo.
+    """
+    filters = SearchFilters.from_query(
+        genres=genres,
+        year_from=year_from,
+        year_to=year_to,
+        vote_min=vote_min,
+        original_language=original_language,
+        sort_by=sort_by,
+    )
+
+    if smart:
+        return await smart_search(q, media_type, page, filters)
+
+    results, total_pages = await search_titles(q, media_type, [page])
+    return {
+        "page": page,
+        "results": filters.sorted_pool([r for r in results if filters.accepts(r)]),
+        "total_pages": total_pages,
+        "matched": {},
+    }
 
 
 @router.get("/trending")

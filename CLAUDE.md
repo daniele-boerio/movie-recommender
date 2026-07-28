@@ -63,6 +63,7 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │       ├── App.jsx             # Gate auth + layout, routing, global state (AppContext)
 │       ├── AuthContext.jsx     # useAuth(): user, login, register, logout, loading
 │       ├── api.js              # All fetch calls + refresh automatico sul 401
+│       ├── hooks.js            # hook condivisi (useHideOnScroll)
 │       ├── index.css           # Global styles, CSS variables, full design system
 │       ├── pages/
 │       │   ├── DiscoverPage.jsx      # Trending + search
