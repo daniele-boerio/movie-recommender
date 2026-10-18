@@ -6,7 +6,7 @@ services:
     environment:
       - SERVICE_FQDN_FRONTEND
     depends_on:
-      - backend
+      - watchnext-backend
     healthcheck:
       # 127.0.0.1 e non localhost: nginx.conf fa solo `listen 80` (IPv4), mentre dentro
       # il container localhost risolve prima su ::1 e busybox wget non ripiega su IPv4.
@@ -20,7 +20,10 @@ services:
   # Il Postgres è una risorsa Coolify separata: niente servizio `db` qui, le DB_*
   # vanno impostate nelle Environment Variables di Coolify e la risorsa Postgres
   # deve stare sulla stessa rete Docker di questo stack.
-  backend:
+  # Nome volutamente unico: con "Connect To Predefined Network" lo stack entra nella
+  # rete condivisa `coolify`, dove altri progetti hanno già un servizio `backend`, e
+  # nginx finirebbe a smistare le richieste anche ai loro container.
+  watchnext-backend:
     build: ./backend
     environment:
       - TMDB_API_KEY=${TMDB_API_KEY}

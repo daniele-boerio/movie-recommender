@@ -17,14 +17,17 @@ A self-hosted **multi-user** webapp to track watched movies/TV shows and get per
 ```
 Traefik (Coolify) → Nginx (frontend container, :80)
                         ├─ /          → static React build
-                        └─ /api/*     → proxy_pass → backend:8000 (FastAPI)
+                        └─ /api/*     → proxy_pass → watchnext-backend:8000 (FastAPI)
                                                         └─ PostgreSQL (risorsa Coolify separata)
 ```
 
 Frontend never talks to TMDB directly — all API calls go through the backend.
 
 Il PostgreSQL **non** è nel docker-compose: è una risorsa Coolify a sé, e il backend ci arriva
-tramite le `DB_*` impostate nelle Environment Variables di Coolify.
+tramite le `DB_*` impostate nelle Environment Variables di Coolify: `DB_HOST` è l'UUID della
+risorsa DB (nome del container) e l'app ha "Connect To Predefined Network" attivo.
+Per questo il servizio si chiama `watchnext-backend` e non `backend`: nella rete condivisa
+`coolify` un nome generico collide con i servizi omonimi di altri progetti.
 
 Frontend e backend sono **same-origin** (Nginx in prod, il proxy di Vite in dev): è ciò che
 permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
@@ -55,7 +58,7 @@ permette di tenere i token in cookie `httpOnly`, irraggiungibili da JavaScript.
 │           └── watch_sync.py   # un episodio segnato porta la serie tra i "Visti"
 ├── frontend/
 │   ├── Dockerfile              # Multi-stage: node build → nginx serve
-│   ├── nginx.conf              # Proxies /api → backend:8000
+│   ├── nginx.conf              # Proxies /api → watchnext-backend:8000
 │   ├── vite.config.js          # Dev proxy on :3000 → :8000
 │   ├── package.json
 │   └── src/
