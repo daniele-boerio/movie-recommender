@@ -126,7 +126,7 @@ Push to `daniele-boerio/movie-recommender:main` → Coolify auto-deploys via Doc
 
 ## Common tasks
 
-- **Add a new API endpoint:** add route in `backend/main.py`, add fetch function in `frontend/src/api.js`, call from component.
+- **Add a new API endpoint:** add the route in the right `backend/app/routers/*.py` (new router → `include_router` in `app/main.py`), add fetch function in `frontend/src/api.js`, call from component.
 - **Add a new page:** create in `frontend/src/pages/`, add Route in `App.jsx`, add NavLink in sidebar.
 - **Add a new component:** create in `frontend/src/components/`, use `useApp()` for global state access.
 - **Change styles:** edit CSS variables at `:root` in `index.css` for theme changes, or add classes below.
