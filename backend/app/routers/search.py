@@ -1,11 +1,17 @@
-"""Proxy TMDB: ricerca e scoperta. Nessun dato nostro, solo passacarte."""
+"""Proxy TMDB: ricerca e scoperta. Nessun dato nostro, solo passacarte (ma solo per chi è loggato)."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+
+from ..auth import get_current_user_id
 
 from ..services.smart_search import SearchFilters, search_titles, smart_search
 from ..tmdb import tmdb_get
 
-router = APIRouter(prefix="/api", tags=["Search"])
+# Solo per utenti loggati: sono un proxy verso TMDB con la NOSTRA chiave API, e aperte a
+# tutti permettevano a chiunque di usarla (e consumarne il limite) passando dal sito.
+router = APIRouter(
+    prefix="/api", tags=["Search"], dependencies=[Depends(get_current_user_id)]
+)
 
 
 @router.get("/search")

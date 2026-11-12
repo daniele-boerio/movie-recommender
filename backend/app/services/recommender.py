@@ -1,5 +1,6 @@
 """Motore di raccomandazione: scoring dei candidati TMDB sui titoli visti."""
 
+import asyncio
 import json
 from collections import Counter
 from dataclasses import dataclass, field
@@ -8,6 +9,7 @@ from ..models import Watched
 from ..tmdb import tmdb_get
 
 ANIMATION_GENRE = 16
+_TMDB_CONCURRENCY = 10  # chiamate TMDB contemporanee al massimo (TMDB regge ~40/s)
 
 
 @dataclass(frozen=True)
@@ -114,59 +116,73 @@ async def build_recommendations(
     seed_rating: dict[tuple, int] = {}  # miglior voto personale tra i titoli che l'hanno suggerito
     sample = watched_rows[:30]  # tetto alle chiamate TMDB
 
-    for row in sample:
-        mt = row.media_type
-        tid = row.tmdb_id
-        personal_rating = row.rating or 5
+    # Le chiamate a TMDB partono tutte insieme (con un tetto di concorrenza), poi i
+    # risultati si elaborano nello stesso ordine di prima: la classifica non cambia, ma
+    # l'attesa è quella delle chiamate più lente invece della somma di 60 chiamate in fila.
+    sem = asyncio.Semaphore(_TMDB_CONCURRENCY)
 
-        for endpoint in ("recommendations", "similar"):
+    async def _fetch(path: str) -> dict | None:
+        async with sem:
             try:
-                data = await tmdb_get(f"/{mt}/{tid}/{endpoint}", {"page": 1})
+                return await tmdb_get(path, {"page": 1})
             except Exception:
+                return None
+
+    jobs = [
+        (row, f"/{row.media_type}/{row.tmdb_id}/{endpoint}")
+        for row in sample
+        for endpoint in ("recommendations", "similar")
+    ]
+    fetched = await asyncio.gather(*[_fetch(path) for _, path in jobs])
+
+    for (row, _path), data in zip(jobs, fetched):
+        mt = row.media_type
+        personal_rating = row.rating or 5
+        if data is None:
+            continue
+
+        for item in data.get("results", [])[:10]:
+            item_mt = item.get("media_type", mt)
+            item_id = item.get("id")
+            key = (item_id, item_mt)
+
+            if key in watched_set:
+                continue
+            if not filters.accepts(item, item_mt):
                 continue
 
-            for item in data.get("results", [])[:10]:
-                item_mt = item.get("media_type", mt)
-                item_id = item.get("id")
-                key = (item_id, item_mt)
+            if key not in candidates:
+                candidates[key] = {
+                    "tmdb_id": item_id,
+                    "media_type": item_mt,
+                    "title": item.get("title") or item.get("name", ""),
+                    "poster_path": item.get("poster_path"),
+                    "vote_average": item.get("vote_average", 0),
+                    "overview": item.get("overview", ""),
+                    "genre_ids": item.get("genre_ids", []),
+                    "original_language": item.get("original_language"),
+                    "release_date": item.get("release_date") or item.get("first_air_date", ""),
+                    "score": 0,
+                    "frequency": 0,
+                    "recommended_by": [],
+                }
 
-                if key in watched_set:
-                    continue
-                if not filters.accepts(item, item_mt):
-                    continue
+            c = candidates[key]
+            c["frequency"] += 1
+            c["recommended_by"].append(row.title)
+            seed_rating[key] = max(seed_rating.get(key, 0), personal_rating)
 
-                if key not in candidates:
-                    candidates[key] = {
-                        "tmdb_id": item_id,
-                        "media_type": item_mt,
-                        "title": item.get("title") or item.get("name", ""),
-                        "poster_path": item.get("poster_path"),
-                        "vote_average": item.get("vote_average", 0),
-                        "overview": item.get("overview", ""),
-                        "genre_ids": item.get("genre_ids", []),
-                        "original_language": item.get("original_language"),
-                        "release_date": item.get("release_date") or item.get("first_air_date", ""),
-                        "score": 0,
-                        "frequency": 0,
-                        "recommended_by": [],
-                    }
+            # I generi del candidato: la *media* dell'affinità, non la somma, altrimenti
+            # basta essere etichettati con mezzo catalogo per vincere.
+            genres = item.get("genre_ids") or []
+            affinity = (
+                sum(genre_profile.get(g, 0) for g in genres) / len(genres) if genres else 0
+            )
 
-                c = candidates[key]
-                c["frequency"] += 1
-                c["recommended_by"].append(row.title)
-                seed_rating[key] = max(seed_rating.get(key, 0), personal_rating)
-
-                # I generi del candidato: la *media* dell'affinità, non la somma, altrimenti
-                # basta essere etichettati con mezzo catalogo per vincere.
-                genres = item.get("genre_ids") or []
-                affinity = (
-                    sum(genre_profile.get(g, 0) for g in genres) / len(genres) if genres else 0
-                )
-
-                freq_score = c["frequency"] * 10
-                tmdb_score = (item.get("vote_average", 0) or 0) * 2
-                personal_boost = seed_rating[key] * 1.5
-                c["score"] = round(freq_score + tmdb_score + personal_boost + affinity * 15, 2)
+            freq_score = c["frequency"] * 10
+            tmdb_score = (item.get("vote_average", 0) or 0) * 2
+            personal_boost = seed_rating[key] * 1.5
+            c["score"] = round(freq_score + tmdb_score + personal_boost + affinity * 15, 2)
 
     ranked = sorted(candidates.values(), key=lambda x: x["score"], reverse=True)
 

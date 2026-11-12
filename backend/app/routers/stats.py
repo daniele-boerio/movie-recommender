@@ -32,7 +32,7 @@ def _last_months(n: int = 12) -> list[str]:
 
 
 @router.get("/stats")
-async def get_stats(
+def get_stats(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):

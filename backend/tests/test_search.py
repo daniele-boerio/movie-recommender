@@ -5,8 +5,25 @@ test provano la logica di riconoscimento, di unione e di ordinamento senza rete.
 """
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app import main
 from app.services import smart_search as ss
+
+from .helpers import new_user
+
+
+@pytest.fixture
+def client():
+    """Le rotte di ricerca vogliono il login: qui un client già autenticato."""
+    return new_user("cerca@example.com", "cercatore", "password-lunga-123")
+
+
+def test_ricerca_senza_login_401():
+    """Proxy TMDB con la nostra chiave: niente accesso anonimo."""
+    anon = TestClient(main.app)
+    for path in ("/api/search?q=x", "/api/trending", "/api/details/movie/1", "/api/genres/movie"):
+        assert anon.get(path).status_code == 401, path
 
 
 @pytest.fixture
