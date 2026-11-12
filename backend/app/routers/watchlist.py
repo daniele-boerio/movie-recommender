@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/watchlist", tags=["Watchlist"])
 
 
 @router.get("")
-async def get_watchlist(
+def get_watchlist(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
@@ -34,7 +34,7 @@ async def get_watchlist(
 
 
 @router.post("", status_code=201)
-async def add_watchlist(
+def add_watchlist(
     item: WatchedItem,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
@@ -66,7 +66,7 @@ async def add_watchlist(
 
 
 @router.delete("/{tmdb_id}/{media_type}")
-async def remove_watchlist(
+def remove_watchlist(
     tmdb_id: int,
     media_type: str,
     db: Session = Depends(get_db),

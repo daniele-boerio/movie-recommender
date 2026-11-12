@@ -6,6 +6,7 @@ l'esistenza delle liste altrui.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -69,27 +70,60 @@ def get_lists(
     # id decrescente = dalle più recenti; l'id è monotono con la creazione.
     all_lists = sorted(owned + member_of, key=lambda lst: lst.id, reverse=True)
 
-    out = []
-    for lst in all_lists:
-        items = (
-            db.query(ListItem)
-            .filter(ListItem.list_id == lst.id)
-            .order_by(ListItem.added_at.desc())
-            .all()
+    ids = [lst.id for lst in all_lists]
+    if not ids:
+        return []
+
+    # Tre query in tutto, qualunque sia il numero di liste (prima erano due per lista):
+    # conteggi elementi, conteggi membri, e le prime 4 copertine di ciascuna lista.
+    counts = dict(
+        db.query(ListItem.list_id, func.count(ListItem.id))
+        .filter(ListItem.list_id.in_(ids))
+        .group_by(ListItem.list_id)
+        .all()
+    )
+    members = dict(
+        db.query(ListMember.list_id, func.count(ListMember.id))
+        .filter(ListMember.list_id.in_(ids))
+        .group_by(ListMember.list_id)
+        .all()
+    )
+    ranked = (
+        db.query(
+            ListItem.list_id,
+            ListItem.poster_path,
+            func.row_number()
+            .over(
+                partition_by=ListItem.list_id,
+                order_by=(ListItem.added_at.desc(), ListItem.id.desc()),
+            )
+            .label("rn"),
         )
-        member_count = (
-            db.query(ListMember).filter(ListMember.list_id == lst.id).count()
-        )
-        out.append(
-            {
-                "id": lst.id,
-                "name": lst.name,
-                "count": len(items),
-                "preview": [i.poster_path for i in items[:4] if i.poster_path],
-                "is_owner": lst.user_id == user_id,
-                "shared": member_count > 0,
-            }
-        )
+        .filter(ListItem.list_id.in_(ids))
+        .subquery()
+    )
+    previews: dict[int, list[str]] = {}
+    # Le 4 più recenti, e di queste solo quelle con copertina (come prima).
+    for list_id, poster, _rn in (
+        db.query(ranked.c.list_id, ranked.c.poster_path, ranked.c.rn)
+        .filter(ranked.c.rn <= 4)
+        .order_by(ranked.c.list_id, ranked.c.rn)
+        .all()
+    ):
+        if poster:
+            previews.setdefault(list_id, []).append(poster)
+
+    out = [
+        {
+            "id": lst.id,
+            "name": lst.name,
+            "count": counts.get(lst.id, 0),
+            "preview": previews.get(lst.id, []),
+            "is_owner": lst.user_id == user_id,
+            "shared": members.get(lst.id, 0) > 0,
+        }
+        for lst in all_lists
+    ]
     return out
 
 

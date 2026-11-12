@@ -16,6 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from .config import SCHEDULER_ENABLED
 from .rate_limit import limiter
+from .tmdb import close_client as close_tmdb_client
 from .routers import (
     auth,
     calendar,
@@ -78,8 +79,9 @@ async def _start_scheduler() -> None:
 
 
 @app.on_event("shutdown")
-def _stop_scheduler() -> None:
+async def _shutdown() -> None:
     if SCHEDULER_ENABLED:
         from .scheduler import stop_scheduler
 
         stop_scheduler()
+    await close_tmdb_client()  # chiude le connessioni keep-alive verso TMDB

@@ -9,6 +9,7 @@ import asyncio
 from datetime import date
 
 from fastapi import APIRouter, Depends
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id
@@ -63,8 +64,9 @@ async def calendar(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    rows = (
-        db.query(Watched)
+    # Query sincrona nel threadpool: in un endpoint async bloccherebbe l'event loop.
+    rows = await run_in_threadpool(
+        lambda: db.query(Watched)
         .filter(Watched.user_id == user_id, Watched.status == "watchlist")
         .limit(60)  # tetto alle chiamate TMDB in un colpo solo
         .all()

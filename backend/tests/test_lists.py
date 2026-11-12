@@ -39,3 +39,33 @@ def test_shared_list_flow_and_notifications(client):
     # lucia lascia la lista
     assert lucia.request("DELETE", f"/api/lists/{lid}/members/{lucia_id}").status_code == 200
     assert not any(x["id"] == lid for x in lucia.get("/api/lists").json())
+
+
+def test_elenco_liste_conteggi_anteprima_e_condivisione(client):
+    """GET /api/lists con le query aggregate: stessi numeri di prima, per ogni lista."""
+    register(client, "mario@example.com", "mario", "password123")
+    new_user("lucia@example.com", "lucia", "passwordlucia1")
+
+    piena = client.post("/api/lists", json={"name": "Piena"}).json()["id"]
+    vuota = client.post("/api/lists", json={"name": "Vuota"}).json()["id"]
+    for i in range(6):
+        client.post(
+            f"/api/lists/{piena}/items",
+            json={
+                "tmdb_id": 100 + i,
+                "media_type": "movie",
+                "title": f"Film {i}",
+                # il penultimo aggiunto è senza copertina: resta fuori dall'anteprima
+                "poster_path": None if i == 4 else f"/p{i}.jpg",
+            },
+        )
+    client.post(f"/api/lists/{piena}/members", json={"username": "lucia"})
+
+    by_id = {x["id"]: x for x in client.get("/api/lists").json()}
+    assert by_id[piena]["count"] == 6
+    assert by_id[piena]["shared"] is True
+    # le 4 più recenti (5, 4, 3, 2) meno quella senza copertina
+    assert set(by_id[piena]["preview"]) == {"/p5.jpg", "/p3.jpg", "/p2.jpg"}
+    assert by_id[vuota] == {
+        "id": vuota, "name": "Vuota", "count": 0, "preview": [], "is_owner": True, "shared": False,
+    }

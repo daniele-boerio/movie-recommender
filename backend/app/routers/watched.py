@@ -41,7 +41,7 @@ def _serialize(w: Watched) -> dict:
 
 
 @router.get("")
-async def get_watched(
+def get_watched(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
@@ -56,7 +56,7 @@ async def get_watched(
 
 
 @router.post("", status_code=201)
-async def add_watched(
+def add_watched(
     item: WatchedItem,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
@@ -94,7 +94,7 @@ async def add_watched(
 
 
 @router.patch("/{tmdb_id}/{media_type}")
-async def update_watched(
+def update_watched(
     tmdb_id: int,
     media_type: str,
     body: WatchedPatch,
@@ -135,7 +135,7 @@ async def update_watched(
 
 
 @router.delete("/{tmdb_id}/{media_type}")
-async def remove_watched(
+def remove_watched(
     tmdb_id: int,
     media_type: str,
     db: Session = Depends(get_db),

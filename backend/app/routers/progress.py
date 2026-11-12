@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/progress", tags=["Episodes"])
 
 
 @router.get("/{tmdb_id}")
-async def get_progress(
+def get_progress(
     tmdb_id: int,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
@@ -80,7 +80,7 @@ async def mark_episode(
 
 
 @router.delete("/{tmdb_id}/episode/{season_number}/{episode_number}")
-async def unmark_episode(
+def unmark_episode(
     tmdb_id: int,
     season_number: int,
     episode_number: int,
@@ -138,7 +138,7 @@ async def mark_season(
 
 
 @router.delete("/{tmdb_id}/season/{season_number}")
-async def unmark_season(
+def unmark_season(
     tmdb_id: int,
     season_number: int,
     db: Session = Depends(get_db),

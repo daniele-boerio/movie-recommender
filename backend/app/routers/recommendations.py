@@ -1,6 +1,7 @@
 """Raccomandazioni personalizzate, calcolate sulla lista dell'utente corrente."""
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_id
@@ -33,20 +34,26 @@ async def get_recommendations(
     # Seed: solo i titoli VISTI (non la watchlist: quelli non li ho ancora guardati,
     # non dicono nulla sui miei gusti). order_by esplicito: Postgres non garantisce un
     # ordine senza, e il motore campiona i primi 30. Così il campione è "i 30 più recenti".
-    rows = (
-        db.query(Watched)
-        .filter(Watched.user_id == user_id, Watched.status == "watched")
-        .order_by(Watched.added_at.desc())
-        .all()
-    )
-    # Esclusione: tutto ciò che è già in lista (visti + da vedere). Consigliare un titolo
-    # già salvato in watchlist è inutile: l'utente l'ha già scelto.
-    saved = (
-        db.query(Watched.tmdb_id, Watched.media_type)
-        .filter(Watched.user_id == user_id)
-        .all()
-    )
-    exclude = {(tmdb_id, mt) for tmdb_id, mt in saved}
+    def _load():
+        rows = (
+            db.query(Watched)
+            .filter(Watched.user_id == user_id, Watched.status == "watched")
+            .order_by(Watched.added_at.desc())
+            .all()
+        )
+        # Esclusione: tutto ciò che è già in lista (visti + da vedere). Consigliare un titolo
+        # già salvato in watchlist è inutile: l'utente l'ha già scelto.
+        saved = (
+            db.query(Watched.tmdb_id, Watched.media_type)
+            .filter(Watched.user_id == user_id)
+            .all()
+        )
+        exclude = {(tmdb_id, mt) for tmdb_id, mt in saved}
+        return rows, exclude
+
+    # Le query sono sincrone: in un endpoint async le giriamo nel threadpool, altrimenti
+    # bloccherebbero l'event loop (e con lui tutte le altre richieste) mentre aspettano il DB.
+    rows, exclude = await run_in_threadpool(_load)
 
     filters = RecFilters(
         media_type=media_type,
